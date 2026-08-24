@@ -52,4 +52,5 @@ dependencies {
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
     implementation(libs.exifinterface)
+implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 }
