@@ -1,0 +1,33 @@
+<resources>
+    <string name="app_name">My Gallery</string>
+    <string name="photos">Photos</string>
+    <string name="albums">Albums</string>
+    <string name="videos">Videos</string>
+    <string name="permission_title">Allow media access</string>
+    <string name="permission_message">My Gallery needs permission to display photos and videos stored on your device. Your media stays on your device.</string>
+    <string name="grant_access">Grant access</string>
+    <string name="open_settings">Open app settings</string>
+    <string name="no_photos">No photos found</string>
+    <string name="no_videos">No videos found</string>
+    <string name="no_albums">No albums found</string>
+    <string name="no_media">No media found</string>
+    <string name="items_count">%1$d items</string>
+    <string name="share">Share</string>
+    <string name="delete">Delete</string>
+    <string name="info">Information</string>
+    <string name="add_favorite">Add to favorites</string>
+    <string name="remove_favorite">Remove from favorites</string>
+    <string name="delete_confirm">Delete “%1$s”?</string>
+    <string name="delete_failed">Unable to delete this item</string>
+    <string name="cancel">Cancel</string>
+    <string name="search">Search</string>
+    <string name="search_hint">Search by file or album name</string>
+    <string name="file_name">File name</string>
+    <string name="date">Date</string>
+    <string name="file_size">File size</string>
+    <string name="resolution">Resolution</string>
+    <string name="duration">Duration</string>
+    <string name="unknown">Unknown</string>
+    <string name="close">Close</string>
+    <string name="album">Album</string>
+</resources>
