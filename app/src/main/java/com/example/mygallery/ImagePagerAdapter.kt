@@ -24,7 +24,6 @@ class ImagePagerAdapter(
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
 
-            scaleType = ImageView.ScaleType.FIT_CENTER
             setBackgroundColor(android.graphics.Color.BLACK)
         }
 
