@@ -139,9 +139,47 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openMedia(item: MediaItem) {
-        val intent = Intent(this, if (item.type == MediaType.IMAGE) ImageViewerActivity::class.java else VideoPlayerActivity::class.java)
-        intent.data = item.uri
+
+    if (item.type == MediaType.IMAGE) {
+
+        val images = vm.images.value.orEmpty()
+
+        val imageUris = ArrayList(
+            images.map { it.uri.toString() }
+        )
+
+        val position = images.indexOfFirst {
+            it.uri == item.uri
+        }
+
+        val intent = Intent(
+            this,
+            ImageViewerActivity::class.java
+        )
+
+        intent.putStringArrayListExtra(
+            ImageViewerActivity.EXTRA_IMAGES,
+            imageUris
+        )
+
+        intent.putExtra(
+            ImageViewerActivity.EXTRA_POSITION,
+            position
+        )
+
         startActivity(intent)
+
+    } else {
+
+        val intent = Intent(
+            this,
+            VideoPlayerActivity::class.java
+        )
+
+        intent.data = item.uri
+
+        startActivity(intent)
+    }
     }
 
     private fun showActions(item: MediaItem) {
