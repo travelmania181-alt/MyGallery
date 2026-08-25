@@ -2,13 +2,11 @@ package com.example.mygallery
 
 import android.content.Context
 import android.graphics.Matrix
-import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import androidx.appcompat.widget.AppCompatImageView
-import kotlin.math.max
 import kotlin.math.min
 
 class ZoomImageView @JvmOverloads constructor(
@@ -17,85 +15,84 @@ class ZoomImageView @JvmOverloads constructor(
 ) : AppCompatImageView(context, attrs) {
 
     private val matrixValue = Matrix()
+    private val matrixValues = FloatArray(9)
 
     private var minScale = 1f
-    private var maxScale = 5f
+    private val maxScale = 5f
     private var currentScale = 1f
 
     private var lastX = 0f
     private var lastY = 0f
 
-    private val scaleDetector =
-        ScaleGestureDetector(
-            context,
-            object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+    private val scaleDetector = ScaleGestureDetector(
+        context,
+        object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
 
-                override fun onScale(detector: ScaleGestureDetector): Boolean {
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
 
-                    val newScale = (
-                        currentScale * detector.scaleFactor
-                    ).coerceIn(minScale, maxScale)
+                val oldScale = currentScale
 
-                    val scaleFactor = newScale / currentScale
+                currentScale = (
+                    currentScale * detector.scaleFactor
+                ).coerceIn(minScale, maxScale)
+
+                val scaleFactor = currentScale / oldScale
+
+                matrixValue.postScale(
+                    scaleFactor,
+                    scaleFactor,
+                    detector.focusX,
+                    detector.focusY
+                )
+
+                fixTranslation()
+
+                imageMatrix = matrixValue
+                postInvalidateOnAnimation()
+
+                return true
+            }
+        }
+    )
+
+    private val gestureDetector = GestureDetector(
+        context,
+        object : GestureDetector.SimpleOnGestureListener() {
+
+            override fun onDown(e: MotionEvent): Boolean {
+                return true
+            }
+
+            override fun onDoubleTap(e: MotionEvent): Boolean {
+
+                if (currentScale > minScale + 0.01f) {
+
+                    resetImage()
+
+                } else {
+
+                    val targetScale = min(2.5f, maxScale)
+                    val scaleFactor = targetScale / currentScale
 
                     matrixValue.postScale(
                         scaleFactor,
                         scaleFactor,
-                        detector.focusX,
-                        detector.focusY
+                        e.x,
+                        e.y
                     )
 
-                    currentScale = newScale
+                    currentScale = targetScale
 
                     fixTranslation()
 
                     imageMatrix = matrixValue
-
-                    return true
+                    postInvalidateOnAnimation()
                 }
+
+                return true
             }
-        )
-
-    private val gestureDetector =
-        GestureDetector(
-            context,
-            object : GestureDetector.SimpleOnGestureListener() {
-
-                override fun onDoubleTap(e: MotionEvent): Boolean {
-
-                    if (currentScale > minScale + 0.01f) {
-
-                        resetImage()
-
-                    } else {
-
-                        val targetScale = min(2.5f, maxScale)
-
-                        val scaleFactor =
-                            targetScale / currentScale
-
-                        matrixValue.postScale(
-                            scaleFactor,
-                            scaleFactor,
-                            e.x,
-                            e.y
-                        )
-
-                        currentScale = targetScale
-
-                        fixTranslation()
-
-                        imageMatrix = matrixValue
-                    }
-
-                    return true
-                }
-
-                override fun onDown(e: MotionEvent): Boolean {
-                    return true
-                }
-            }
-        )
+        }
+    )
 
     init {
         scaleType = ScaleType.MATRIX
@@ -111,18 +108,20 @@ class ZoomImageView @JvmOverloads constructor(
     ) {
         super.onSizeChanged(w, h, oldw, oldh)
 
-        if (w > 0 && h > 0) {
-            post {
-                resetImage()
-            }
+        if (w > 0 && h > 0 && drawable != null) {
+            resetImage()
         }
     }
 
-    override fun setImageDrawable(drawable: android.graphics.drawable.Drawable?) {
+    override fun setImageDrawable(
+        drawable: android.graphics.drawable.Drawable?
+    ) {
         super.setImageDrawable(drawable)
 
-        post {
-            resetImage()
+        if (width > 0 && height > 0 && drawable != null) {
+            post {
+                resetImage()
+            }
         }
     }
 
@@ -163,26 +162,22 @@ class ZoomImageView @JvmOverloads constructor(
         matrixValue.postTranslate(dx, dy)
 
         imageMatrix = matrixValue
+        postInvalidateOnAnimation()
     }
 
     private fun fixTranslation() {
 
         val d = drawable ?: return
 
-        val values = FloatArray(9)
+        matrixValue.getValues(matrixValues)
 
-        matrixValue.getValues(values)
+        val scale = matrixValues[Matrix.MSCALE_X]
 
-        val scale = values[Matrix.MSCALE_X]
+        val imageWidth = d.intrinsicWidth * scale
+        val imageHeight = d.intrinsicHeight * scale
 
-        val imageWidth =
-            d.intrinsicWidth * scale
-
-        val imageHeight =
-            d.intrinsicHeight * scale
-
-        var dx = values[Matrix.MTRANS_X]
-        var dy = values[Matrix.MTRANS_Y]
+        var dx = matrixValues[Matrix.MTRANS_X]
+        var dy = matrixValues[Matrix.MTRANS_Y]
 
         if (imageWidth <= width) {
 
@@ -190,10 +185,13 @@ class ZoomImageView @JvmOverloads constructor(
 
         } else {
 
-            dx = dx.coerceIn(
-                width - imageWidth,
-                0f
-            )
+            val minX = width - imageWidth
+
+            if (dx > 0f) {
+                dx = 0f
+            } else if (dx < minX) {
+                dx = minX
+            }
         }
 
         if (imageHeight <= height) {
@@ -202,68 +200,81 @@ class ZoomImageView @JvmOverloads constructor(
 
         } else {
 
-            dy = dy.coerceIn(
-                height - imageHeight,
-                0f
-            )
+            val minY = height - imageHeight
+
+            if (dy > 0f) {
+                dy = 0f
+            } else if (dy < minY) {
+                dy = minY
+            }
         }
 
-        values[Matrix.MTRANS_X] = dx
-        values[Matrix.MTRANS_Y] = dy
+        matrixValues[Matrix.MTRANS_X] = dx
+        matrixValues[Matrix.MTRANS_Y] = dy
 
-        matrixValue.setValues(values)
+        matrixValue.setValues(matrixValues)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
 
-    gestureDetector.onTouchEvent(event)
-    scaleDetector.onTouchEvent(event)
+        gestureDetector.onTouchEvent(event)
+        scaleDetector.onTouchEvent(event)
 
-    when (event.actionMasked) {
+        when (event.actionMasked) {
 
-        MotionEvent.ACTION_DOWN -> {
-
-            lastX = event.x
-            lastY = event.y
-
-            // Allow ViewPager to swipe when image is not zoomed
-            parent?.requestDisallowInterceptTouchEvent(
-                currentScale > minScale + 0.01f
-            )
-        }
-
-        MotionEvent.ACTION_MOVE -> {
-
-            // Only handle dragging when image is zoomed
-            if (!scaleDetector.isInProgress &&
-                currentScale > minScale + 0.01f
-            ) {
-
-                parent?.requestDisallowInterceptTouchEvent(true)
-
-                val dx = event.x - lastX
-                val dy = event.y - lastY
-
-                matrixValue.postTranslate(dx, dy)
-                fixTranslation()
-
-                imageMatrix = matrixValue
+            MotionEvent.ACTION_DOWN -> {
 
                 lastX = event.x
                 lastY = event.y
-            } else {
-                // Image is at normal size: let ViewPager handle swipe
+
+                parent?.requestDisallowInterceptTouchEvent(
+                    currentScale > minScale + 0.01f
+                )
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+
+                if (
+                    !scaleDetector.isInProgress &&
+                    currentScale > minScale + 0.01f
+                ) {
+
+                    parent?.requestDisallowInterceptTouchEvent(true)
+
+                    val dx = event.x - lastX
+                    val dy = event.y - lastY
+
+                    if (dx != 0f || dy != 0f) {
+
+                        matrixValue.postTranslate(dx, dy)
+
+                        fixTranslation()
+
+                        imageMatrix = matrixValue
+                        postInvalidateOnAnimation()
+                    }
+
+                    lastX = event.x
+                    lastY = event.y
+
+                } else {
+
+                    parent?.requestDisallowInterceptTouchEvent(false)
+                }
+            }
+
+            MotionEvent.ACTION_POINTER_DOWN -> {
+
+                parent?.requestDisallowInterceptTouchEvent(true)
+            }
+
+            MotionEvent.ACTION_UP,
+            MotionEvent.ACTION_CANCEL -> {
+
                 parent?.requestDisallowInterceptTouchEvent(false)
             }
         }
 
-        MotionEvent.ACTION_UP,
-        MotionEvent.ACTION_CANCEL -> {
-
-            parent?.requestDisallowInterceptTouchEvent(false)
-        }
+        return true
     }
-
-    return true
-}
 }
