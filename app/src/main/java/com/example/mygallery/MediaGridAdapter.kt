@@ -26,7 +26,7 @@ class MediaGridAdapter(
         fun bind(item: MediaItem) {
             binding.thumbnail.load(item.uri) {
                 crossfade(true)
-                if (item.type == MediaType.VIDEO) videoFrameMillis(1000)
+                if (item.type == MediaType.VIDEO) videoFrameMillis(0)
             }
             binding.videoOverlay.visibility =
                 if (item.type == MediaType.VIDEO) android.view.View.VISIBLE else android.view.View.GONE
