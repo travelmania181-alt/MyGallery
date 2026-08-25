@@ -35,39 +35,44 @@ class VideoPlayerActivity : AppCompatActivity() {
     }
 
     override fun onStart() {
-        super.onStart()
+    super.onStart()
 
-        val audioAttributes =
-            AudioAttributes.Builder()
-                .setUsage(C.USAGE_MEDIA)
-                .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
-                .build()
+    val audioAttributes = AudioAttributes.Builder()
+        .setUsage(C.USAGE_MEDIA)
+        .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+        .build()
 
-        player = ExoPlayer.Builder(this)
-            .setAudioAttributes(
-                audioAttributes,
-                true
-            )
-            .build()
-            .also { exoPlayer ->
+    player = ExoPlayer.Builder(this)
+        .setAudioAttributes(audioAttributes, true)
+        .build()
+        .also { exoPlayer ->
 
-                exoPlayer.volume = 1f
+            exoPlayer.volume = 1f
 
-                binding.playerView.player =
-                    exoPlayer
+            binding.playerView.player = exoPlayer
 
-                intent.data?.let { uri ->
+            exoPlayer.addListener(object : Player.Listener {
 
-                    exoPlayer.setMediaItem(
-                        MediaItem.fromUri(uri)
-                    )
-
-                    exoPlayer.prepare()
-
-                    exoPlayer.playWhenReady = true
+                override fun onPlayerError(error: PlaybackException) {
+                    Toast.makeText(
+                        this@VideoPlayerActivity,
+                        "Video error: ${error.errorCodeName}",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
+            })
+
+            intent.data?.let { uri ->
+                exoPlayer.setMediaItem(
+                    MediaItem.fromUri(uri)
+                )
+
+                exoPlayer.prepare()
+
+                exoPlayer.playWhenReady = true
             }
-    }
+        }
+}
 
     override fun onStop() {
 
