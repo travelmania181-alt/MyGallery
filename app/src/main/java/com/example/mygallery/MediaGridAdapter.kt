@@ -41,29 +41,45 @@ class MediaGridAdapter(
 
         fun bind(item: MediaItem) {
 
-            binding.thumbnail.load(item.uri) {
-                crossfade(true)
+            if (item.type == MediaType.VIDEO) {
 
-                if (item.type == MediaType.VIDEO) {
-                    videoFrameMillis(1000)
+                binding.thumbnail.load(item.uri) {
+                    crossfade(false)
+                    videoFrameMillis(100)
+                }
+
+            } else {
+
+                binding.thumbnail.load(item.uri) {
+                    crossfade(false)
                 }
             }
 
             binding.videoOverlay.visibility =
-                if (item.type == MediaType.VIDEO) View.VISIBLE
-                else View.GONE
+                if (item.type == MediaType.VIDEO) {
+                    View.VISIBLE
+                } else {
+                    View.GONE
+                }
 
             binding.duration.visibility =
-                if (item.type == MediaType.VIDEO) View.VISIBLE
-                else View.GONE
+                if (item.type == MediaType.VIDEO) {
+                    View.VISIBLE
+                } else {
+                    View.GONE
+                }
 
             if (item.type == MediaType.VIDEO) {
-                binding.duration.text = formatDuration(item.duration)
+                binding.duration.text =
+                    formatDuration(item.duration)
             }
 
             binding.favorite.visibility =
-                if (item.isFavorite) View.VISIBLE
-                else View.GONE
+                if (item.isFavorite) {
+                    View.VISIBLE
+                } else {
+                    View.GONE
+                }
 
             binding.root.setOnClickListener {
                 onClick(item)
@@ -80,6 +96,7 @@ class MediaGridAdapter(
         parent: ViewGroup,
         viewType: Int
     ): Holder {
+
         val binding = ItemMediaBinding.inflate(
             LayoutInflater.from(parent.context),
             parent,
@@ -97,9 +114,11 @@ class MediaGridAdapter(
     }
 
     private fun formatDuration(ms: Long): String {
+
         val totalSeconds = ms / 1000
 
         return if (totalSeconds >= 3600) {
+
             String.format(
                 Locale.US,
                 "%d:%02d:%02d",
@@ -107,7 +126,9 @@ class MediaGridAdapter(
                 (totalSeconds % 3600) / 60,
                 totalSeconds % 60
             )
+
         } else {
+
             String.format(
                 Locale.US,
                 "%02d:%02d",
