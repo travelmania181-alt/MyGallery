@@ -1,5 +1,7 @@
 package com.example.mygallery
 
+import android.graphics.Bitmap
+import android.util.Size
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -7,8 +9,12 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
-import coil.request.videoFrameMillis
 import com.example.mygallery.databinding.ItemMediaBinding
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 class MediaGridAdapter(
@@ -17,6 +23,7 @@ class MediaGridAdapter(
 ) : ListAdapter<MediaItem, MediaGridAdapter.Holder>(DIFF) {
 
     companion object {
+
         private val DIFF = object : DiffUtil.ItemCallback<MediaItem>() {
 
             override fun areItemsTheSame(
@@ -39,13 +46,39 @@ class MediaGridAdapter(
         private val binding: ItemMediaBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
+        private var thumbnailJob: Job? = null
+
         fun bind(item: MediaItem) {
+
+            thumbnailJob?.cancel()
+
+            binding.thumbnail.tag = item.uri.toString()
+            binding.thumbnail.setImageDrawable(null)
 
             if (item.type == MediaType.VIDEO) {
 
-                binding.thumbnail.load(item.uri) {
-                    crossfade(false)
-                    videoFrameMillis(100)
+                thumbnailJob = CoroutineScope(
+                    Dispatchers.Main
+                ).launch {
+
+                    val bitmap = withContext(Dispatchers.IO) {
+                        try {
+                            binding.thumbnail.context.contentResolver.loadThumbnail(
+                                item.uri,
+                                Size(512, 512),
+                                null
+                            )
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+
+                    if (
+                        binding.thumbnail.tag == item.uri.toString() &&
+                        bitmap != null
+                    ) {
+                        binding.thumbnail.setImageBitmap(bitmap)
+                    }
                 }
 
             } else {
@@ -90,6 +123,13 @@ class MediaGridAdapter(
                 true
             }
         }
+
+        fun clear() {
+            thumbnailJob?.cancel()
+            thumbnailJob = null
+            binding.thumbnail.tag = null
+            binding.thumbnail.setImageDrawable(null)
+        }
     }
 
     override fun onCreateViewHolder(
@@ -111,6 +151,11 @@ class MediaGridAdapter(
         position: Int
     ) {
         holder.bind(getItem(position))
+    }
+
+    override fun onViewRecycled(holder: Holder) {
+        holder.clear()
+        super.onViewRecycled(holder)
     }
 
     private fun formatDuration(ms: Long): String {
