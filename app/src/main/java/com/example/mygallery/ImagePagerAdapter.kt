@@ -1,7 +1,6 @@
 package com.example.mygallery
 
 import android.view.ViewGroup
-import android.widget.ImageView
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 
@@ -10,8 +9,8 @@ class ImagePagerAdapter(
 ) : RecyclerView.Adapter<ImagePagerAdapter.ImageHolder>() {
 
     class ImageHolder(
-        val imageView: ImageView
-    ) : RecyclerView.ViewHolder(imageView)
+    val imageView: ZoomImageView
+) : RecyclerView.ViewHolder(imageView)
 
     override fun onCreateViewHolder(
         parent: ViewGroup,
