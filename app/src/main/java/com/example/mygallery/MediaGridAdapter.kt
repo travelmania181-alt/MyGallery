@@ -1,15 +1,15 @@
 package com.example.mygallery
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
-import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import coil.request.videoFrameMillis
 import com.example.mygallery.databinding.ItemMediaBinding
 import java.util.Locale
-import coil.request.allowHardware
 
 class MediaGridAdapter(
     private val onClick: (MediaItem) -> Unit,
@@ -18,55 +18,102 @@ class MediaGridAdapter(
 
     companion object {
         private val DIFF = object : DiffUtil.ItemCallback<MediaItem>() {
-            override fun areItemsTheSame(a: MediaItem, b: MediaItem) = a.uri == b.uri
-            override fun areContentsTheSame(a: MediaItem, b: MediaItem) = a == b
+
+            override fun areItemsTheSame(
+                oldItem: MediaItem,
+                newItem: MediaItem
+            ): Boolean {
+                return oldItem.uri == newItem.uri
+            }
+
+            override fun areContentsTheSame(
+                oldItem: MediaItem,
+                newItem: MediaItem
+            ): Boolean {
+                return oldItem == newItem
+            }
         }
     }
 
-    inner class Holder(val binding: ItemMediaBinding) : RecyclerView.ViewHolder(binding.root) {
+    inner class Holder(
+        private val binding: ItemMediaBinding
+    ) : RecyclerView.ViewHolder(binding.root) {
+
         fun bind(item: MediaItem) {
-    binding.thumbnail.load(item.uri) {
-        crossfade(true)
 
-        if (item.type == MediaType.VIDEO) {
-            videoFrameMillis(1000)
-            allowHardware(false)
+            binding.thumbnail.load(item.uri) {
+                crossfade(true)
+
+                if (item.type == MediaType.VIDEO) {
+                    videoFrameMillis(1000)
+                }
+            }
+
+            binding.videoOverlay.visibility =
+                if (item.type == MediaType.VIDEO) View.VISIBLE
+                else View.GONE
+
+            binding.duration.visibility =
+                if (item.type == MediaType.VIDEO) View.VISIBLE
+                else View.GONE
+
+            if (item.type == MediaType.VIDEO) {
+                binding.duration.text = formatDuration(item.duration)
+            }
+
+            binding.favorite.visibility =
+                if (item.isFavorite) View.VISIBLE
+                else View.GONE
+
+            binding.root.setOnClickListener {
+                onClick(item)
+            }
+
+            binding.root.setOnLongClickListener {
+                onLongClick(item)
+                true
+            }
         }
     }
 
-    binding.videoOverlay.visibility =
-        if (item.type == MediaType.VIDEO) android.view.View.VISIBLE
-        else android.view.View.GONE
+    override fun onCreateViewHolder(
+        parent: ViewGroup,
+        viewType: Int
+    ): Holder {
+        val binding = ItemMediaBinding.inflate(
+            LayoutInflater.from(parent.context),
+            parent,
+            false
+        )
 
-    binding.duration.text = formatDuration(item.duration)
-
-    binding.duration.visibility =
-        if (item.type == MediaType.VIDEO) android.view.View.VISIBLE
-        else android.view.View.GONE
-
-    binding.favorite.visibility =
-        if (item.isFavorite) android.view.View.VISIBLE
-        else android.view.View.GONE
-
-    binding.root.setOnClickListener {
-        onClick(item)
+        return Holder(binding)
     }
 
-    binding.root.setOnLongClickListener {
-        onLongClick(item)
-        true
+    override fun onBindViewHolder(
+        holder: Holder,
+        position: Int
+    ) {
+        holder.bind(getItem(position))
     }
-}
-
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
-        Holder(ItemMediaBinding.inflate(LayoutInflater.from(parent.context), parent, false))
-
-    override fun onBindViewHolder(holder: Holder, position: Int) = holder.bind(getItem(position))
 
     private fun formatDuration(ms: Long): String {
-        val total = ms / 1000
-        return if (total >= 3600)
-            String.format(Locale.US, "%d:%02d:%02d", total / 3600, (total % 3600) / 60, total % 60)
-        else String.format(Locale.US, "%d:%02d", total / 60, total % 60)
+        val totalSeconds = ms / 1000
+
+        return if (totalSeconds >= 3600) {
+            String.format(
+                Locale.US,
+                "%d:%02d:%02d",
+                totalSeconds / 3600,
+                (totalSeconds % 3600) / 60,
+                totalSeconds % 60
+            )
+        } else {
+            String.format(
+                Locale.US,
+                "%02d:%02d",
+                totalSeconds / 60,
+                totalSeconds % 60
+            )
+        }
     }
 }
