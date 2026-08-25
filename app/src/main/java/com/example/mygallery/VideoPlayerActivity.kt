@@ -8,6 +8,9 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import com.example.mygallery.databinding.ActivityVideoPlayerBinding
+import android.widget.Toast
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
 
 class VideoPlayerActivity : AppCompatActivity() {
 
