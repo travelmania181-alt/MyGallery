@@ -216,47 +216,54 @@ class ZoomImageView @JvmOverloads constructor(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
 
-        gestureDetector.onTouchEvent(event)
-        scaleDetector.onTouchEvent(event)
+    gestureDetector.onTouchEvent(event)
+    scaleDetector.onTouchEvent(event)
 
-        when (event.actionMasked) {
+    when (event.actionMasked) {
 
-            MotionEvent.ACTION_DOWN -> {
+        MotionEvent.ACTION_DOWN -> {
+
+            lastX = event.x
+            lastY = event.y
+
+            // Allow ViewPager to swipe when image is not zoomed
+            parent?.requestDisallowInterceptTouchEvent(
+                currentScale > minScale + 0.01f
+            )
+        }
+
+        MotionEvent.ACTION_MOVE -> {
+
+            // Only handle dragging when image is zoomed
+            if (!scaleDetector.isInProgress &&
+                currentScale > minScale + 0.01f
+            ) {
 
                 parent?.requestDisallowInterceptTouchEvent(true)
 
+                val dx = event.x - lastX
+                val dy = event.y - lastY
+
+                matrixValue.postTranslate(dx, dy)
+                fixTranslation()
+
+                imageMatrix = matrixValue
+
                 lastX = event.x
                 lastY = event.y
-            }
-
-            MotionEvent.ACTION_MOVE -> {
-
-                if (
-                    !scaleDetector.isInProgress &&
-                    currentScale > minScale
-                ) {
-
-                    val dx = event.x - lastX
-                    val dy = event.y - lastY
-
-                    matrixValue.postTranslate(dx, dy)
-
-                    fixTranslation()
-
-                    imageMatrix = matrixValue
-
-                    lastX = event.x
-                    lastY = event.y
-                }
-            }
-
-            MotionEvent.ACTION_UP,
-            MotionEvent.ACTION_CANCEL -> {
-
+            } else {
+                // Image is at normal size: let ViewPager handle swipe
                 parent?.requestDisallowInterceptTouchEvent(false)
             }
         }
 
-        return true
+        MotionEvent.ACTION_UP,
+        MotionEvent.ACTION_CANCEL -> {
+
+            parent?.requestDisallowInterceptTouchEvent(false)
+        }
     }
+
+    return true
+}
 }
