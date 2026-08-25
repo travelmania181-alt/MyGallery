@@ -18,7 +18,7 @@ class ImagePagerAdapter(
         viewType: Int
     ): ImageHolder {
 
-        val imageView = ImageView(parent.context).apply {
+        val imageView = ZoomImageView(parent.context).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
