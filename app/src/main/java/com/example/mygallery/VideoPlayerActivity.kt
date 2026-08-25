@@ -1,32 +1,29 @@
 package com.example.mygallery
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.ExoPlayer
-import com.example.mygallery.databinding.ActivityVideoPlayerBinding
-import android.widget.Toast
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import com.example.mygallery.databinding.ActivityVideoPlayerBinding
 
 class VideoPlayerActivity : AppCompatActivity() {
 
     private var player: ExoPlayer? = null
-
-    private lateinit var binding:
-        ActivityVideoPlayerBinding
+    private lateinit var binding: ActivityVideoPlayerBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         enableEdgeToEdge()
 
-        binding =
-            ActivityVideoPlayerBinding.inflate(layoutInflater)
-
+        binding = ActivityVideoPlayerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         binding.close.setOnClickListener {
@@ -35,51 +32,49 @@ class VideoPlayerActivity : AppCompatActivity() {
     }
 
     override fun onStart() {
-    super.onStart()
+        super.onStart()
 
-    val audioAttributes = AudioAttributes.Builder()
-        .setUsage(C.USAGE_MEDIA)
-        .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
-        .build()
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+            .build()
 
-    player = ExoPlayer.Builder(this)
-        .setAudioAttributes(audioAttributes, true)
-        .build()
-        .also { exoPlayer ->
+        val renderersFactory = DefaultRenderersFactory(this)
+            .setEnableDecoderFallback(true)
 
-            exoPlayer.volume = 1f
+        player = ExoPlayer.Builder(this, renderersFactory)
+            .setAudioAttributes(audioAttributes, true)
+            .setHandleAudioBecomingNoisy(true)
+            .build()
+            .also { exoPlayer ->
 
-            binding.playerView.player = exoPlayer
+                exoPlayer.volume = 1f
 
-            exoPlayer.addListener(object : Player.Listener {
+                binding.playerView.player = exoPlayer
 
-                override fun onPlayerError(error: PlaybackException) {
-                    Toast.makeText(
-                        this@VideoPlayerActivity,
-                        "Video error: ${error.errorCodeName}",
-                        Toast.LENGTH_LONG
-                    ).show()
+                exoPlayer.addListener(object : Player.Listener {
+
+                    override fun onPlayerError(error: PlaybackException) {
+                        Toast.makeText(
+                            this@VideoPlayerActivity,
+                            "Cannot play this video: ${error.errorCodeName}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                })
+
+                intent.data?.let { uri ->
+                    exoPlayer.setMediaItem(MediaItem.fromUri(uri))
+                    exoPlayer.prepare()
+                    exoPlayer.playWhenReady = true
                 }
-            })
-
-            intent.data?.let { uri ->
-                exoPlayer.setMediaItem(
-                    MediaItem.fromUri(uri)
-                )
-
-                exoPlayer.prepare()
-
-                exoPlayer.playWhenReady = true
             }
-        }
-}
+    }
 
     override fun onStop() {
-
         binding.playerView.player = null
 
         player?.release()
-
         player = null
 
         super.onStop()
