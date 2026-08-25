@@ -9,6 +9,7 @@ import coil.load
 import coil.request.videoFrameMillis
 import com.example.mygallery.databinding.ItemMediaBinding
 import java.util.Locale
+import coil.request.allowHardware
 
 class MediaGridAdapter(
     private val onClick: (MediaItem) -> Unit,
@@ -24,21 +25,38 @@ class MediaGridAdapter(
 
     inner class Holder(val binding: ItemMediaBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(item: MediaItem) {
-            binding.thumbnail.load(item.uri) {
-                crossfade(true)
-                if (item.type == MediaType.VIDEO) videoFrameMillis(0)
-            }
-            binding.videoOverlay.visibility =
-                if (item.type == MediaType.VIDEO) android.view.View.VISIBLE else android.view.View.GONE
-            binding.duration.text = formatDuration(item.duration)
-            binding.duration.visibility =
-                if (item.type == MediaType.VIDEO) android.view.View.VISIBLE else android.view.View.GONE
-            binding.favorite.visibility =
-                if (item.isFavorite) android.view.View.VISIBLE else android.view.View.GONE
-            binding.root.setOnClickListener { onClick(item) }
-            binding.root.setOnLongClickListener { onLongClick(item); true }
+    binding.thumbnail.load(item.uri) {
+        crossfade(true)
+
+        if (item.type == MediaType.VIDEO) {
+            videoFrameMillis(1000)
+            allowHardware(false)
         }
     }
+
+    binding.videoOverlay.visibility =
+        if (item.type == MediaType.VIDEO) android.view.View.VISIBLE
+        else android.view.View.GONE
+
+    binding.duration.text = formatDuration(item.duration)
+
+    binding.duration.visibility =
+        if (item.type == MediaType.VIDEO) android.view.View.VISIBLE
+        else android.view.View.GONE
+
+    binding.favorite.visibility =
+        if (item.isFavorite) android.view.View.VISIBLE
+        else android.view.View.GONE
+
+    binding.root.setOnClickListener {
+        onClick(item)
+    }
+
+    binding.root.setOnLongClickListener {
+        onLongClick(item)
+        true
+    }
+}
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
         Holder(ItemMediaBinding.inflate(LayoutInflater.from(parent.context), parent, false))
