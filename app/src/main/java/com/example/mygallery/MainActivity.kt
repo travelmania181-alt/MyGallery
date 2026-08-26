@@ -27,7 +27,9 @@ class MainActivity : AppCompatActivity() {
 
     private val vm: GalleryViewModel by viewModels()
 
-    private lateinit var mediaAdapter: MediaGridAdapter
+    // Separate adapters: this prevents Photos and Videos from mixing.
+    private lateinit var photoAdapter: MediaGridAdapter
+    private lateinit var videoAdapter: MediaGridAdapter
     private lateinit var albumAdapter: AlbumAdapter
 
     private var currentTab = R.id.photos
@@ -62,10 +64,7 @@ class MainActivity : AppCompatActivity() {
 
         setSupportActionBar(binding.toolbar)
 
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) {
-                v,
-                insets ->
-
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val bars = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars()
             )
@@ -80,12 +79,19 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
-        mediaAdapter = MediaGridAdapter(
-            ::openMedia,
-            ::showActions
+        // Photos adapter
+        photoAdapter = MediaGridAdapter(
+            onClick = ::openMedia,
+            onLongClick = ::showActions
         )
 
-        albumAdapter = AlbumAdapter {
+        // Videos adapter
+        videoAdapter = MediaGridAdapter(
+            onClick = ::openMedia,
+            onLongClick = ::showActions
+        )
+
+        albumAdapter = AlbumAdapter { album ->
             startActivity(
                 Intent(
                     this,
@@ -93,12 +99,12 @@ class MainActivity : AppCompatActivity() {
                 ).apply {
                     putExtra(
                         AlbumActivity.EXTRA_ID,
-                        it.id
+                        album.id
                     )
 
                     putExtra(
                         AlbumActivity.EXTRA_NAME,
-                        it.name
+                        album.name
                     )
                 }
             )
@@ -119,8 +125,7 @@ class MainActivity : AppCompatActivity() {
         albumLayoutManager = GridLayoutManager(
             this,
             if (
-                resources.configuration
-                    .smallestScreenWidthDp >= 600
+                resources.configuration.smallestScreenWidthDp >= 600
             ) {
                 3
             } else {
@@ -128,14 +133,14 @@ class MainActivity : AppCompatActivity() {
             }
         )
 
-binding.bottomNav.setOnItemSelectedListener {
+        binding.bottomNav.setOnItemSelectedListener { menuItem ->
 
-    currentTab = it.itemId
+            currentTab = menuItem.itemId
 
-    renderTab()
+            renderTab()
 
-    true
-}
+            true
+        }
 
         binding.retryPermission.setOnClickListener {
             requestMediaPermission()
@@ -159,21 +164,21 @@ binding.bottomNav.setOnItemSelectedListener {
             binding.swipeRefresh.isRefreshing = false
         }
 
-        vm.images.observe(this) {
+        vm.images.observe(this) { items ->
             if (currentTab == R.id.photos) {
-                submitMedia(it)
+                submitPhotos(items)
             }
         }
 
-        vm.videos.observe(this) {
+        vm.videos.observe(this) { items ->
             if (currentTab == R.id.videos) {
-                submitMedia(it)
+                submitVideos(items)
             }
         }
 
-        vm.albums.observe(this) {
+        vm.albums.observe(this) { items ->
             if (currentTab == R.id.albums) {
-                submitAlbums(it)
+                submitAlbums(items)
             }
         }
 
@@ -205,65 +210,89 @@ binding.bottomNav.setOnItemSelectedListener {
 
         when (currentTab) {
 
-            R.id.photos ->
-                submitMedia(
+            R.id.photos -> {
+                submitPhotos(
                     vm.images.value.orEmpty()
                 )
+            }
 
-            R.id.videos ->
-                submitMedia(
+            R.id.videos -> {
+                submitVideos(
                     vm.videos.value.orEmpty()
                 )
+            }
 
-            else ->
+            R.id.albums -> {
                 submitAlbums(
                     vm.albums.value.orEmpty()
                 )
-        }
-    }
-
-    private fun submitMedia(items: List<MediaItem>) {
-
-    val layoutManager =
-        if (currentTab == R.id.videos) {
-            videoLayoutManager
-        } else {
-            photoLayoutManager
-        }
-
-    if (binding.recycler.adapter !== mediaAdapter) {
-        binding.recycler.adapter = mediaAdapter
-    }
-
-    if (binding.recycler.layoutManager !== layoutManager) {
-        binding.recycler.layoutManager = layoutManager
-    }
-
-    // Safety: only show the correct media type
-    val correctItems =
-        if (currentTab == R.id.videos) {
-            items.filter {
-                it.type == MediaType.VIDEO
             }
-        } else {
-            items.filter {
+        }
+    }
+
+    private fun submitPhotos(
+        items: List<MediaItem>
+    ) {
+
+        if (binding.recycler.adapter !== photoAdapter) {
+            binding.recycler.adapter = photoAdapter
+        }
+
+        if (
+            binding.recycler.layoutManager !== photoLayoutManager
+        ) {
+            binding.recycler.layoutManager =
+                photoLayoutManager
+        }
+
+        val photos = items
+            .filter {
                 it.type == MediaType.IMAGE
             }
+
+        photoAdapter.submitList(
+            ArrayList(sortMedia(photos))
+        )
+
+        binding.emptyGroup.visibility =
+            if (photos.isEmpty()) {
+                android.view.View.VISIBLE
+            } else {
+                android.view.View.GONE
+            }
+    }
+
+    private fun submitVideos(
+        items: List<MediaItem>
+    ) {
+
+        if (binding.recycler.adapter !== videoAdapter) {
+            binding.recycler.adapter = videoAdapter
         }
 
-    val sortedItems = sortMedia(correctItems)
-
-    mediaAdapter.submitList(
-        ArrayList(sortedItems)
-    )
-
-    binding.emptyGroup.visibility =
-        if (correctItems.isEmpty()) {
-            android.view.View.VISIBLE
-        } else {
-            android.view.View.GONE
+        if (
+            binding.recycler.layoutManager !== videoLayoutManager
+        ) {
+            binding.recycler.layoutManager =
+                videoLayoutManager
         }
-}
+
+        val videos = items
+            .filter {
+                it.type == MediaType.VIDEO
+            }
+
+        videoAdapter.submitList(
+            ArrayList(sortMedia(videos))
+        )
+
+        binding.emptyGroup.visibility =
+            if (videos.isEmpty()) {
+                android.view.View.VISIBLE
+            } else {
+                android.view.View.GONE
+            }
+    }
 
     private fun sortMedia(
         items: List<MediaItem>
@@ -331,7 +360,6 @@ binding.bottomNav.setOnItemSelectedListener {
 
         val selected =
             when (sortMode) {
-
                 SortMode.NEWEST -> 0
                 SortMode.OLDEST -> 1
                 SortMode.NAME_ASC -> 2
@@ -347,7 +375,6 @@ binding.bottomNav.setOnItemSelectedListener {
 
                 sortMode =
                     when (which) {
-
                         0 -> SortMode.NEWEST
                         1 -> SortMode.OLDEST
                         2 -> SortMode.NAME_ASC
@@ -356,16 +383,15 @@ binding.bottomNav.setOnItemSelectedListener {
 
                 dialog.dismiss()
 
-when (currentTab) {
+                when (currentTab) {
+                    R.id.photos -> submitPhotos(
+                        vm.images.value.orEmpty()
+                    )
 
-    R.id.photos -> {
-        submitMedia(vm.images.value.orEmpty())
-    }
-
-    R.id.videos -> {
-        submitMedia(vm.videos.value.orEmpty())
-    }
-}
+                    R.id.videos -> submitVideos(
+                        vm.videos.value.orEmpty()
+                    )
+                }
             }
             .show()
     }
@@ -377,7 +403,6 @@ when (currentTab) {
                 resources.displayMetrics.density
 
         return when {
-
             widthDp >= 900 -> 6
             widthDp >= 700 -> 5
             widthDp >= 500 -> 4
@@ -521,7 +546,6 @@ when (currentTab) {
             .setItems(choices) { _, which ->
 
                 when (which) {
-
                     0 -> share(item)
 
                     1 -> vm.toggleFavorite(item) {
