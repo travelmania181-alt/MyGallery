@@ -38,8 +38,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var videoLayoutManager: GridLayoutManager
     private lateinit var albumLayoutManager: GridLayoutManager
 
-    private var sortMode = SortMode.NEWEST
+    private var photoSortMode = SortMode.NEWEST
 
+private var videoSortMode = SortMode.NEWEST
     private enum class SortMode {
         NEWEST,
         OLDEST,
@@ -251,7 +252,12 @@ class MainActivity : AppCompatActivity() {
             }
 
         photoAdapter.submitList(
-            ArrayList(sortMedia(photos))
+            ArrayList(
+    sortMedia(
+        photos,
+        photoSortMode
+    )
+)
         )
 
         binding.emptyGroup.visibility =
@@ -283,7 +289,12 @@ class MainActivity : AppCompatActivity() {
             }
 
         videoAdapter.submitList(
-            ArrayList(sortMedia(videos))
+            ArrayList(
+    sortMedia(
+        videos,
+        videoSortMode
+    )
+)
         )
 
         binding.emptyGroup.visibility =
@@ -295,10 +306,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun sortMedia(
-    items: List<MediaItem>
+    items: List<MediaItem>,
+    sortMode: SortMode
 ): List<MediaItem> {
 
-    val result = when (sortMode) {
+    return when (sortMode) {
 
         SortMode.NEWEST ->
             items.sortedByDescending {
@@ -311,21 +323,15 @@ class MainActivity : AppCompatActivity() {
             }
 
         SortMode.NAME_ASC ->
-            items.sortedWith(
-                compareBy<MediaItem> {
-                    it.name.lowercase()
-                }
-            )
+            items.sortedBy {
+                it.name.lowercase()
+            }
 
         SortMode.NAME_DESC ->
-            items.sortedWith(
-                compareByDescending<MediaItem> {
-                    it.name.lowercase()
-                }
-            )
+            items.sortedByDescending {
+                it.name.lowercase()
+            }
     }
-
-    return result.toList()
 }
 
     private fun submitAlbums(
@@ -364,7 +370,14 @@ class MainActivity : AppCompatActivity() {
         "Name Z–A"
     )
 
-    val selected = when (sortMode) {
+    val currentSortMode =
+        if (currentTab == R.id.photos) {
+            photoSortMode
+        } else {
+            videoSortMode
+        }
+
+    val selected = when (currentSortMode) {
         SortMode.NEWEST -> 0
         SortMode.OLDEST -> 1
         SortMode.NAME_ASC -> 2
@@ -378,50 +391,61 @@ class MainActivity : AppCompatActivity() {
             selected
         ) { dialog, which ->
 
-            sortMode = when (which) {
-                0 -> SortMode.NEWEST
-                1 -> SortMode.OLDEST
-                2 -> SortMode.NAME_ASC
-                else -> SortMode.NAME_DESC
-            }
+            val newSortMode =
+                when (which) {
+                    0 -> SortMode.NEWEST
+                    1 -> SortMode.OLDEST
+                    2 -> SortMode.NAME_ASC
+                    else -> SortMode.NAME_DESC
+                }
 
             dialog.dismiss()
 
-            if (currentTab == R.id.photos) {
+            when (currentTab) {
 
-                val sortedItems =
-                    sortMedia(
+                R.id.photos -> {
+
+                    photoSortMode = newSortMode
+
+                    val photos =
                         vm.images.value.orEmpty()
                             .filter {
                                 it.type == MediaType.IMAGE
                             }
+
+                    photoAdapter.submitList(null)
+
+                    photoAdapter.submitList(
+                        ArrayList(
+                            sortMedia(
+                                photos,
+                                photoSortMode
+                            )
+                        )
                     )
+                }
 
-                photoAdapter.submitList(
-                    null
-                )
+                R.id.videos -> {
 
-                photoAdapter.submitList(
-                    ArrayList(sortedItems)
-                )
+                    videoSortMode = newSortMode
 
-            } else if (currentTab == R.id.videos) {
-
-                val sortedItems =
-                    sortMedia(
+                    val videos =
                         vm.videos.value.orEmpty()
                             .filter {
                                 it.type == MediaType.VIDEO
                             }
+
+                    videoAdapter.submitList(null)
+
+                    videoAdapter.submitList(
+                        ArrayList(
+                            sortMedia(
+                                videos,
+                                videoSortMode
+                            )
+                        )
                     )
-
-                videoAdapter.submitList(
-                    null
-                )
-
-                videoAdapter.submitList(
-                    ArrayList(sortedItems)
-                )
+                }
             }
         }
         .show()
@@ -513,8 +537,9 @@ class MainActivity : AppCompatActivity() {
 
             val images =
                 sortMedia(
-                    vm.images.value.orEmpty()
-                )
+    vm.images.value.orEmpty(),
+    photoSortMode
+)
 
             val imageUris = ArrayList(
                 images.map {
