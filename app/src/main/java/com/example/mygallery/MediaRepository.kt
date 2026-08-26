@@ -189,37 +189,56 @@ class MediaRepository(private val context: Context) {
     }
 
     suspend fun albums(): List<Album> =
-        withContext(Dispatchers.IO) {
+    withContext(Dispatchers.IO) {
 
-            val all = images() + videos()
+        val all = images() + videos()
 
-            all.groupBy {
+        val favoriteItems = all.filter { it.isFavorite }
+
+        val regularAlbums = all
+            .groupBy {
                 it.bucketId
                     ?: it.bucketName
                     ?: "unknown"
             }
-                .map { (id, items) ->
+            .map { (id, items) ->
 
-                    val cover =
-                        items.maxByOrNull {
-                            it.dateAddedSeconds
-                        }!!
+                val cover = items.maxByOrNull {
+                    it.dateAddedSeconds
+                }!!
 
-                    Album(
-                        id = id,
-                        name =
-                            cover.bucketName
-                                ?.ifBlank { null }
-                                ?: "Other",
-                        coverUri = cover.uri,
-                        count = items.size
-                    )
-                }
-                .sortedBy {
-                    it.name.lowercase()
-                }
+                Album(
+                    id = id,
+                    name = cover.bucketName
+                        ?.ifBlank { null }
+                        ?: "Other",
+                    coverUri = cover.uri,
+                    count = items.size
+                )
+            }
+            .sortedBy {
+                it.name.lowercase()
+            }
+
+        if (favoriteItems.isEmpty()) {
+            regularAlbums
+        } else {
+
+            val favoriteCover =
+                favoriteItems.maxByOrNull {
+                    it.dateAddedSeconds
+                }!!
+
+            listOf(
+                Album(
+                    id = "__favorites__",
+                    name = "Favorites",
+                    coverUri = favoriteCover.uri,
+                    count = favoriteItems.size
+                )
+            ) + regularAlbums
         }
-
+    }
     suspend fun toggleFavorite(
         item: MediaItem
     ): Boolean = withContext(Dispatchers.IO) {
