@@ -28,6 +28,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mediaAdapter: MediaGridAdapter
     private lateinit var albumAdapter: AlbumAdapter
     private var currentTab = R.id.photos
+    private lateinit var photoLayoutManager: GridLayoutManager
+private lateinit var videoLayoutManager: GridLayoutManager
+private lateinit var albumLayoutManager: GridLayoutManager
 
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -54,6 +57,14 @@ class MainActivity : AppCompatActivity() {
             })
         }
         binding.recycler.itemAnimator = null
+        photoLayoutManager = GridLayoutManager(this, calculateColumns())
+
+videoLayoutManager = GridLayoutManager(this, calculateColumns())
+
+albumLayoutManager = GridLayoutManager(
+    this,
+    if (resources.configuration.smallestScreenWidthDp >= 600) 3 else 2
+)
         binding.bottomNav.setOnItemSelectedListener {
             currentTab = it.itemId
             renderTab()
@@ -93,17 +104,49 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun submitMedia(items: List<MediaItem>) {
+
+    val layoutManager =
+        if (currentTab == R.id.videos) {
+            videoLayoutManager
+        } else {
+            photoLayoutManager
+        }
+
+    if (binding.recycler.adapter !== mediaAdapter) {
         binding.recycler.adapter = mediaAdapter
-        binding.recycler.layoutManager = GridLayoutManager(this, calculateColumns())
-        mediaAdapter.submitList(items)
-        binding.emptyGroup.visibility = if (items.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
     }
 
+    if (binding.recycler.layoutManager !== layoutManager) {
+        binding.recycler.layoutManager = layoutManager
+    }
+
+    mediaAdapter.submitList(items)
+
+    binding.emptyGroup.visibility =
+        if (items.isEmpty()) {
+            android.view.View.VISIBLE
+        } else {
+            android.view.View.GONE
+        }
+}
     private fun submitAlbums(items: List<Album>) {
+
+    if (binding.recycler.adapter !== albumAdapter) {
         binding.recycler.adapter = albumAdapter
-        binding.recycler.layoutManager = GridLayoutManager(this, if (resources.configuration.smallestScreenWidthDp >= 600) 3 else 2)
-        albumAdapter.submitList(items)
-        binding.emptyGroup.visibility = if (items.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
+    }
+
+    if (binding.recycler.layoutManager !== albumLayoutManager) {
+        binding.recycler.layoutManager = albumLayoutManager
+    }
+
+    albumAdapter.submitList(items)
+
+    binding.emptyGroup.visibility =
+        if (items.isEmpty()) {
+            android.view.View.VISIBLE
+        } else {
+            android.view.View.GONE
+        }
     }
 
     private fun calculateColumns(): Int {
