@@ -295,32 +295,38 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun sortMedia(
-        items: List<MediaItem>
-    ): List<MediaItem> {
+    items: List<MediaItem>
+): List<MediaItem> {
 
-        return when (sortMode) {
+    val result = when (sortMode) {
 
-            SortMode.NEWEST ->
-                items.sortedByDescending {
-                    it.dateAddedSeconds
-                }
+        SortMode.NEWEST ->
+            items.sortedByDescending {
+                it.dateAddedSeconds
+            }
 
-            SortMode.OLDEST ->
-                items.sortedBy {
-                    it.dateAddedSeconds
-                }
+        SortMode.OLDEST ->
+            items.sortedBy {
+                it.dateAddedSeconds
+            }
 
-            SortMode.NAME_ASC ->
-                items.sortedBy {
+        SortMode.NAME_ASC ->
+            items.sortedWith(
+                compareBy<MediaItem> {
                     it.name.lowercase()
                 }
+            )
 
-            SortMode.NAME_DESC ->
-                items.sortedByDescending {
+        SortMode.NAME_DESC ->
+            items.sortedWith(
+                compareByDescending<MediaItem> {
                     it.name.lowercase()
                 }
-        }
+            )
     }
+
+    return result.toList()
+}
 
     private fun submitAlbums(
         items: List<Album>
@@ -351,50 +357,75 @@ class MainActivity : AppCompatActivity() {
 
     private fun showSortDialog() {
 
-        val options = arrayOf(
-            "Newest first",
-            "Oldest first",
-            "Name A–Z",
-            "Name Z–A"
-        )
+    val options = arrayOf(
+        "Newest first",
+        "Oldest first",
+        "Name A–Z",
+        "Name Z–A"
+    )
 
-        val selected =
-            when (sortMode) {
-                SortMode.NEWEST -> 0
-                SortMode.OLDEST -> 1
-                SortMode.NAME_ASC -> 2
-                SortMode.NAME_DESC -> 3
-            }
-
-        AlertDialog.Builder(this)
-            .setTitle("Sort by")
-            .setSingleChoiceItems(
-                options,
-                selected
-            ) { dialog, which ->
-
-                sortMode =
-                    when (which) {
-                        0 -> SortMode.NEWEST
-                        1 -> SortMode.OLDEST
-                        2 -> SortMode.NAME_ASC
-                        else -> SortMode.NAME_DESC
-                    }
-
-                dialog.dismiss()
-
-                when (currentTab) {
-                    R.id.photos -> submitPhotos(
-                        vm.images.value.orEmpty()
-                    )
-
-                    R.id.videos -> submitVideos(
-                        vm.videos.value.orEmpty()
-                    )
-                }
-            }
-            .show()
+    val selected = when (sortMode) {
+        SortMode.NEWEST -> 0
+        SortMode.OLDEST -> 1
+        SortMode.NAME_ASC -> 2
+        SortMode.NAME_DESC -> 3
     }
+
+    AlertDialog.Builder(this)
+        .setTitle("Sort by")
+        .setSingleChoiceItems(
+            options,
+            selected
+        ) { dialog, which ->
+
+            sortMode = when (which) {
+                0 -> SortMode.NEWEST
+                1 -> SortMode.OLDEST
+                2 -> SortMode.NAME_ASC
+                else -> SortMode.NAME_DESC
+            }
+
+            dialog.dismiss()
+
+            if (currentTab == R.id.photos) {
+
+                val sortedItems =
+                    sortMedia(
+                        vm.images.value.orEmpty()
+                            .filter {
+                                it.type == MediaType.IMAGE
+                            }
+                    )
+
+                photoAdapter.submitList(
+                    null
+                )
+
+                photoAdapter.submitList(
+                    ArrayList(sortedItems)
+                )
+
+            } else if (currentTab == R.id.videos) {
+
+                val sortedItems =
+                    sortMedia(
+                        vm.videos.value.orEmpty()
+                            .filter {
+                                it.type == MediaType.VIDEO
+                            }
+                    )
+
+                videoAdapter.submitList(
+                    null
+                )
+
+                videoAdapter.submitList(
+                    ArrayList(sortedItems)
+                )
+            }
+        }
+        .show()
+}
 
     private fun calculateColumns(): Int {
 
