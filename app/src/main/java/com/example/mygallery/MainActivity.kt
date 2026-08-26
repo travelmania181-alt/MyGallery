@@ -128,16 +128,9 @@ class MainActivity : AppCompatActivity() {
             }
         )
 
-        binding.bottomNav.setOnItemSelectedListener {
+binding.bottomNav.setOnItemSelectedListener {
 
     currentTab = it.itemId
-
-    // Clear the previous tab immediately
-    if (currentTab == R.id.photos) {
-        mediaAdapter.submitList(emptyList())
-    } else if (currentTab == R.id.videos) {
-        mediaAdapter.submitList(emptyList())
-    }
 
     renderTab()
 
@@ -229,41 +222,48 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun submitMedia(
-        items: List<MediaItem>
-    ) {
+    private fun submitMedia(items: List<MediaItem>) {
 
-        val layoutManager =
-            if (currentTab == R.id.videos) {
-                videoLayoutManager
-            } else {
-                photoLayoutManager
-            }
-
-        if (
-            binding.recycler.adapter !== mediaAdapter
-        ) {
-            binding.recycler.adapter = mediaAdapter
+    val layoutManager =
+        if (currentTab == R.id.videos) {
+            videoLayoutManager
+        } else {
+            photoLayoutManager
         }
 
-        if (
-            binding.recycler.layoutManager !== layoutManager
-        ) {
-            binding.recycler.layoutManager =
-                layoutManager
-        }
-
-        val sortedItems = sortMedia(items)
-
-        mediaAdapter.submitList(sortedItems)
-
-        binding.emptyGroup.visibility =
-            if (items.isEmpty()) {
-                android.view.View.VISIBLE
-            } else {
-                android.view.View.GONE
-            }
+    if (binding.recycler.adapter !== mediaAdapter) {
+        binding.recycler.adapter = mediaAdapter
     }
+
+    if (binding.recycler.layoutManager !== layoutManager) {
+        binding.recycler.layoutManager = layoutManager
+    }
+
+    // Safety: only show the correct media type
+    val correctItems =
+        if (currentTab == R.id.videos) {
+            items.filter {
+                it.type == MediaType.VIDEO
+            }
+        } else {
+            items.filter {
+                it.type == MediaType.IMAGE
+            }
+        }
+
+    val sortedItems = sortMedia(correctItems)
+
+    mediaAdapter.submitList(
+        ArrayList(sortedItems)
+    )
+
+    binding.emptyGroup.visibility =
+        if (correctItems.isEmpty()) {
+            android.view.View.VISIBLE
+        } else {
+            android.view.View.GONE
+        }
+}
 
     private fun sortMedia(
         items: List<MediaItem>
