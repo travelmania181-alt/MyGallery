@@ -129,10 +129,20 @@ class MainActivity : AppCompatActivity() {
         )
 
         binding.bottomNav.setOnItemSelectedListener {
-            currentTab = it.itemId
-            renderTab()
-            true
-        }
+
+    currentTab = it.itemId
+
+    // Clear the previous tab immediately
+    if (currentTab == R.id.photos) {
+        mediaAdapter.submitList(emptyList())
+    } else if (currentTab == R.id.videos) {
+        mediaAdapter.submitList(emptyList())
+    }
+
+    renderTab()
+
+    true
+}
 
         binding.retryPermission.setOnClickListener {
             requestMediaPermission()
@@ -346,7 +356,16 @@ class MainActivity : AppCompatActivity() {
 
                 dialog.dismiss()
 
-                renderTab()
+when (currentTab) {
+
+    R.id.photos -> {
+        submitMedia(vm.images.value.orEmpty())
+    }
+
+    R.id.videos -> {
+        submitMedia(vm.videos.value.orEmpty())
+    }
+}
             }
             .show()
     }
