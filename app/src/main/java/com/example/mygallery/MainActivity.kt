@@ -571,15 +571,42 @@ private var videoSortMode = SortMode.NEWEST
 
         } else {
 
-            val intent = Intent(
-                this,
-                VideoPlayerActivity::class.java
-            )
+    // Get only videos, using the current video's sort mode
+    val videos = sortMedia(
+        vm.videos.value.orEmpty()
+            .filter {
+                it.type == MediaType.VIDEO
+            },
+        videoSortMode
+    )
 
-            intent.data = item.uri
-
-            startActivity(intent)
+    val videoUris = ArrayList(
+        videos.map {
+            it.uri.toString()
         }
+    )
+
+    val position = videos.indexOfFirst {
+        it.uri == item.uri
+    }
+
+    val intent = Intent(
+        this,
+        VideoPlayerActivity::class.java
+    )
+
+    intent.putStringArrayListExtra(
+        VideoPlayerActivity.EXTRA_VIDEOS,
+        videoUris
+    )
+
+    intent.putExtra(
+        VideoPlayerActivity.EXTRA_POSITION,
+        position
+    )
+
+    startActivity(intent)
+}
     }
 
     private fun showActions(
