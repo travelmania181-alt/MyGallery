@@ -4,7 +4,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -25,6 +24,8 @@ class AlbumActivity : AppCompatActivity() {
     private lateinit var binding: ActivityAlbumBinding
     private lateinit var adapter: MediaGridAdapter
 
+    private var albumTitle = ""
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -33,7 +34,10 @@ class AlbumActivity : AppCompatActivity() {
         binding = ActivityAlbumBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+        ViewCompat.setOnApplyWindowInsetsListener(
+            binding.root
+        ) { v, insets ->
+
             val bars = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars()
             )
@@ -48,24 +52,35 @@ class AlbumActivity : AppCompatActivity() {
             insets
         }
 
-        binding.toolbar.title =
+        albumTitle =
             intent.getStringExtra(EXTRA_NAME)
                 ?: getString(R.string.album)
 
+        binding.toolbar.title = albumTitle
+
         binding.toolbar.setNavigationOnClickListener {
-            finish()
+
+            if (adapter.isSelectionMode) {
+
+                adapter.clearSelection()
+
+            } else {
+
+                finish()
+            }
         }
 
         adapter = MediaGridAdapter(
+
             onClick = { item ->
 
                 if (item.type == MediaType.IMAGE) {
 
-                    val currentItems = adapter.currentList
-
-                    val imageItems = currentItems.filter {
-                        it.type == MediaType.IMAGE
-                    }
+                    // Get all images currently shown in this album
+                    val imageItems =
+                        adapter.currentList.filter {
+                            it.type == MediaType.IMAGE
+                        }
 
                     val imageUris = ArrayList(
                         imageItems.map {
@@ -73,9 +88,10 @@ class AlbumActivity : AppCompatActivity() {
                         }
                     )
 
-                    val position = imageItems.indexOfFirst {
-                        it.uri == item.uri
-                    }
+                    val position =
+                        imageItems.indexOfFirst {
+                            it.uri == item.uri
+                        }
 
                     val imageIntent = Intent(
                         this,
@@ -96,40 +112,84 @@ class AlbumActivity : AppCompatActivity() {
 
                 } else {
 
+                    // Get all videos currently shown in this album
+                    val videoItems =
+                        adapter.currentList.filter {
+                            it.type == MediaType.VIDEO
+                        }
+
+                    val videoUris = ArrayList(
+                        videoItems.map {
+                            it.uri.toString()
+                        }
+                    )
+
+                    val position =
+                        videoItems.indexOfFirst {
+                            it.uri == item.uri
+                        }
+
                     val videoIntent = Intent(
                         this,
                         VideoPlayerActivity::class.java
                     )
 
-                    videoIntent.data = item.uri
+                    videoIntent.putStringArrayListExtra(
+                        VideoPlayerActivity.EXTRA_VIDEOS,
+                        videoUris
+                    )
+
+                    videoIntent.putExtra(
+                        VideoPlayerActivity.EXTRA_POSITION,
+                        position
+                    )
 
                     startActivity(videoIntent)
                 }
             },
 
-            onLongClick = { item ->
-                showActions(item)
+            // Long press is handled by MediaGridAdapter
+            // to start multi-selection.
+            onLongClick = { },
+
+            // Update the toolbar when selection changes
+            onSelectionChanged = { count ->
+
+                if (count > 0) {
+
+                    binding.toolbar.title =
+                        "$count selected"
+
+                } else {
+
+                    binding.toolbar.title =
+                        albumTitle
+                }
             }
         )
 
-        binding.recycler.layoutManager = GridLayoutManager(
-            this,
-            if (
-                resources.configuration.smallestScreenWidthDp >= 600
-            ) {
-                5
-            } else {
-                3
-            }
-        )
+        binding.recycler.layoutManager =
+            GridLayoutManager(
+                this,
+                if (
+                    resources.configuration
+                        .smallestScreenWidthDp >= 600
+                ) {
+                    5
+                } else {
+                    3
+                }
+            )
 
         binding.recycler.adapter = adapter
 
-        val id = intent.getStringExtra(EXTRA_ID)
+        val id =
+            intent.getStringExtra(EXTRA_ID)
 
         lifecycleScope.launch {
 
-            val repo = MediaRepository(this@AlbumActivity)
+            val repo =
+                MediaRepository(this@AlbumActivity)
 
             val items =
                 if (id == FAVORITES_ALBUM_ID) {
@@ -151,7 +211,9 @@ class AlbumActivity : AppCompatActivity() {
                     it.dateAddedSeconds
                 }
 
-            adapter.submitList(sortedItems)
+            adapter.submitList(
+                ArrayList(sortedItems)
+            )
 
             binding.emptyText.visibility =
                 if (sortedItems.isEmpty()) {
@@ -162,99 +224,18 @@ class AlbumActivity : AppCompatActivity() {
         }
     }
 
-    private fun showActions(item: MediaItem) {
+    override fun onBackPressed() {
 
-        val isFavoritesAlbum =
-            intent.getStringExtra(EXTRA_ID) == FAVORITES_ALBUM_ID
+        if (
+            ::adapter.isInitialized &&
+            adapter.isSelectionMode
+        ) {
 
-        val choices =
-            if (isFavoritesAlbum) {
-                arrayOf(
-                    getString(R.string.share),
-                    getString(R.string.remove_favorite),
-                    getString(R.string.info)
-                )
-            } else {
-                arrayOf(
-                    getString(R.string.info)
-                )
-            }
+            adapter.clearSelection()
 
-        AlertDialog.Builder(this)
-            .setTitle(item.name)
-            .setItems(choices) { _, which ->
+        } else {
 
-                if (isFavoritesAlbum) {
-
-                    when (which) {
-
-                        0 -> share(item)
-
-                        1 -> removeFromFavorites(item)
-
-                        2 -> MediaInfoDialog.show(
-                            this,
-                            item
-                        )
-                    }
-
-                } else {
-
-                    MediaInfoDialog.show(
-                        this,
-                        item
-                    )
-                }
-            }
-            .show()
-    }
-
-    private fun removeFromFavorites(item: MediaItem) {
-
-        lifecycleScope.launch {
-
-            val repo =
-                MediaRepository(this@AlbumActivity)
-
-            repo.toggleFavorite(item)
-
-            val updatedItems =
-                adapter.currentList.filter {
-                    it.uri != item.uri
-                }
-
-            adapter.submitList(updatedItems)
-
-            binding.emptyText.visibility =
-                if (updatedItems.isEmpty()) {
-                    View.VISIBLE
-                } else {
-                    View.GONE
-                }
+            super.onBackPressed()
         }
-    }
-
-    private fun share(item: MediaItem) {
-
-        startActivity(
-            Intent.createChooser(
-                Intent(Intent.ACTION_SEND).apply {
-
-                    type = item.mimeType.ifBlank {
-                        "*/*"
-                    }
-
-                    putExtra(
-                        Intent.EXTRA_STREAM,
-                        item.uri
-                    )
-
-                    addFlags(
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
-                },
-                getString(R.string.share)
-            )
-        )
     }
 }
