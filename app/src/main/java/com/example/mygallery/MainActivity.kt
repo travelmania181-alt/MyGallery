@@ -20,6 +20,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.mygallery.databinding.ActivityMainBinding
 import com.google.android.material.snackbar.Snackbar
+import androidx.activity.OnBackPressedCallback
 
 class MainActivity : AppCompatActivity() {
 
@@ -95,6 +96,30 @@ videoAdapter = MediaGridAdapter(
     onLongClick = { },
     onSelectionChanged = { count ->
         updateSelectionUi(count)
+    }
+)
+onBackPressedDispatcher.addCallback(
+    this,
+    object : OnBackPressedCallback(true) {
+
+        override fun handleOnBackPressed() {
+
+            when {
+
+                photoAdapter.isSelectionMode -> {
+                    photoAdapter.clearSelection()
+                }
+
+                videoAdapter.isSelectionMode -> {
+                    videoAdapter.clearSelection()
+                }
+
+                else -> {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        }
     }
 )
 
