@@ -1,6 +1,69 @@
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="130dp" android:layout_margin="2dp">
-    <ImageView android:id="@+id/thumbnail" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="centerCrop" android:contentDescription="@null"/>
-    <TextView android:id="@+id/videoOverlay" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center" android:text="▶" android:textSize="28sp" android:textColor="@android:color/white" android:shadowColor="@android:color/black" android:shadowRadius="4"/>
-    <TextView android:id="@+id/duration" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="bottom|end" android:layout_margin="6dp" android:paddingHorizontal="6dp" android:paddingVertical="2dp" android:background="@drawable/duration_background" android:textColor="@android:color/white" android:textSize="12sp"/>
-    <TextView android:id="@+id/favorite" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="top|end" android:layout_margin="6dp" android:text="♥" android:textColor="@android:color/white" android:textSize="20sp"/>
+<?xml version="1.0" encoding="utf-8"?>
+
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/mediaItemRoot"
+    android:layout_width="match_parent"
+    android:layout_height="150dp"
+    android:layout_margin="3dp"
+    android:clipToOutline="true">
+
+    <!-- Rounded thumbnail -->
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/thumbnail"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Gallery.Rounded" />
+
+    <!-- Dark gradient at bottom for video duration -->
+    <View
+        android:id="@+id/bottomGradient"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_gravity="bottom"
+        android:background="@drawable/media_bottom_gradient" />
+
+    <!-- Video play icon -->
+    <TextView
+        android:id="@+id/videoOverlay"
+        android:layout_width="42dp"
+        android:layout_height="42dp"
+        android:layout_gravity="center"
+        android:background="@drawable/video_play_background"
+        android:gravity="center"
+        android:text="▶"
+        android:textColor="@android:color/white"
+        android:textSize="18sp" />
+
+    <!-- Video duration -->
+    <TextView
+        android:id="@+id/duration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="8dp"
+        android:background="@drawable/duration_background"
+        android:paddingStart="7dp"
+        android:paddingTop="3dp"
+        android:paddingEnd="7dp"
+        android:paddingBottom="3dp"
+        android:textColor="@android:color/white"
+        android:textSize="12sp" />
+
+    <!-- Favorite badge -->
+    <TextView
+        android:id="@+id/favorite"
+        android:layout_width="34dp"
+        android:layout_height="34dp"
+        android:layout_gravity="top|end"
+        android:layout_margin="8dp"
+        android:background="@drawable/favorite_background"
+        android:gravity="center"
+        android:text="♥"
+        android:textColor="@android:color/white"
+        android:textSize="17sp" />
+
 </FrameLayout>
