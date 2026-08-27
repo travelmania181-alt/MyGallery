@@ -2,21 +2,20 @@
 
 <FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/mediaItemRoot"
     android:layout_width="match_parent"
     android:layout_height="150dp"
-    android:layout_margin="3dp"
-    android:clipToOutline="true">
+    android:layout_margin="3dp">
 
+    <!-- Thumbnail -->
     <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/thumbnail"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:contentDescription="@null"
-        android:scaleType="centerCrop"
-        app:shapeAppearanceOverlay="@style/ShapeAppearance.Gallery" />
+        android:scaleType="centerCrop" />
 
+    <!-- Dark gradient at bottom -->
     <View
         android:id="@+id/bottomGradient"
         android:layout_width="match_parent"
@@ -24,6 +23,7 @@
         android:layout_gravity="bottom"
         android:background="@drawable/media_bottom_gradient" />
 
+    <!-- Video play icon -->
     <TextView
         android:id="@+id/videoOverlay"
         android:layout_width="42dp"
@@ -35,6 +35,7 @@
         android:textColor="@android:color/white"
         android:textSize="18sp" />
 
+    <!-- Video duration -->
     <TextView
         android:id="@+id/duration"
         android:layout_width="wrap_content"
@@ -49,6 +50,7 @@
         android:textColor="@android:color/white"
         android:textSize="12sp" />
 
+    <!-- Favorite badge -->
     <TextView
         android:id="@+id/favorite"
         android:layout_width="34dp"
