@@ -1,4 +1,3 @@
 <style name="ShapeAppearance.Gallery.Rounded">
-    <item name="cornerFamily">rounded</item>
     <item name="cornerSize">16dp</item>
 </style>
