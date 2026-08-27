@@ -16,7 +16,7 @@
         android:layout_height="match_parent"
         android:contentDescription="@null"
         android:scaleType="centerCrop"
-        app:shapeAppearanceOverlay="@style/ShapeAppearance.Gallery.Rounded" />
+        />
 
     <!-- Dark gradient at bottom for video duration -->
     <View
