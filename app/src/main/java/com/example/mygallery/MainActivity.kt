@@ -85,17 +85,20 @@ private var videoSortMode = SortMode.NEWEST
 photoAdapter = MediaGridAdapter(
     onClick = ::openMedia,
     onLongClick = { },
-    onSelectionChanged = { count ->
-        updateSelectionUi(count)
+    onSelectionChanged = {
+        if (currentTab == R.id.photos) {
+            updateSelectionUi(photoAdapter.selectedItems.size)
+        }
     }
 )
 
-// Videos adapter
 videoAdapter = MediaGridAdapter(
     onClick = ::openMedia,
     onLongClick = { },
-    onSelectionChanged = { count ->
-        updateSelectionUi(count)
+    onSelectionChanged = {
+        if (currentTab == R.id.videos) {
+            updateSelectionUi(videoAdapter.selectedItems.size)
+        }
     }
 )
 binding.selectionToolbar.setNavigationOnClickListener {
@@ -103,28 +106,22 @@ binding.selectionToolbar.setNavigationOnClickListener {
     getCurrentMediaAdapter()
         ?.clearSelection()
 }
-binding.selectionToolbar.setOnMenuItemClickListener { menuItem ->
+binding.selectionToolbar.setOnMenuItemClickListener { item ->
 
-    when (menuItem.itemId) {
+    when (item.itemId) {
 
         R.id.action_share_selected -> {
-
             shareSelectedMedia()
-
             true
         }
 
         R.id.action_favorite_selected -> {
-
             toggleSelectedFavorites()
-
             true
         }
 
         R.id.action_delete_selected -> {
-
             deleteSelectedMedia()
-
             true
         }
 
@@ -344,8 +341,6 @@ onBackPressedDispatcher.addCallback(
 
         binding.selectionToolbar.title =
             "$count selected"
-
-        updateFavoriteMenuTitle()
 
     } else {
 
