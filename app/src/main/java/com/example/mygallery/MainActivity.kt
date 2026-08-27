@@ -71,6 +71,37 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         setSupportActionBar(binding.toolbar)
+        binding.toolbar.setOnMenuItemClickListener { item ->
+
+    when (item.itemId) {
+
+        R.id.search -> {
+
+            SearchDialog.show(
+                this,
+                vm.images.value.orEmpty() +
+                    vm.videos.value.orEmpty(),
+                ::openMedia
+            )
+
+            true
+        }
+
+        R.id.sort -> {
+
+            if (
+                currentTab == R.id.photos ||
+                currentTab == R.id.videos
+            ) {
+                showSortDialog()
+            }
+
+            true
+        }
+
+        else -> false
+    }
+        }
 
         ViewCompat.setOnApplyWindowInsetsListener(
             binding.root
@@ -1159,38 +1190,5 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    override fun onOptionsItemSelected(
-        item: MenuItem
-    ): Boolean {
-
-        when (item.itemId) {
-
-            R.id.search -> {
-
-                SearchDialog.show(
-                    this,
-                    vm.images.value.orEmpty() +
-                        vm.videos.value.orEmpty(),
-                    ::openMedia
-                )
-
-                return true
-            }
-
-            R.id.sort -> {
-
-                if (
-                    currentTab == R.id.photos ||
-                    currentTab == R.id.videos
-                ) {
-
-                    showSortDialog()
-                }
-
-                return true
-            }
-        }
-
-        return super.onOptionsItemSelected(item)
-    }
+    
 }
