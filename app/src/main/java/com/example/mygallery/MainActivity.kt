@@ -6,9 +6,12 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import android.provider.Settings
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -20,28 +23,31 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.mygallery.databinding.ActivityMainBinding
 import com.google.android.material.snackbar.Snackbar
-import androidx.activity.OnBackPressedCallback
 
 class MainActivity : AppCompatActivity() {
+
+    companion object {
+        private const val DELETE_SINGLE_REQUEST = 42
+        private const val DELETE_MULTIPLE_REQUEST = 43
+    }
 
     private lateinit var binding: ActivityMainBinding
 
     private val vm: GalleryViewModel by viewModels()
 
-    // Separate adapters: this prevents Photos and Videos from mixing.
     private lateinit var photoAdapter: MediaGridAdapter
     private lateinit var videoAdapter: MediaGridAdapter
     private lateinit var albumAdapter: AlbumAdapter
-
-    private var currentTab = R.id.photos
 
     private lateinit var photoLayoutManager: GridLayoutManager
     private lateinit var videoLayoutManager: GridLayoutManager
     private lateinit var albumLayoutManager: GridLayoutManager
 
-    private var photoSortMode = SortMode.NEWEST
+    private var currentTab = R.id.photos
 
-private var videoSortMode = SortMode.NEWEST
+    private var photoSortMode = SortMode.NEWEST
+    private var videoSortMode = SortMode.NEWEST
+
     private enum class SortMode {
         NEWEST,
         OLDEST,
@@ -66,7 +72,10 @@ private var videoSortMode = SortMode.NEWEST
 
         setSupportActionBar(binding.toolbar)
 
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+        ViewCompat.setOnApplyWindowInsetsListener(
+            binding.root
+        ) { v, insets ->
+
             val bars = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars()
             )
@@ -81,84 +90,50 @@ private var videoSortMode = SortMode.NEWEST
             insets
         }
 
-        // Photos adapter
-photoAdapter = MediaGridAdapter(
-    onClick = ::openMedia,
-    onLongClick = { },
-    onSelectionChanged = {
-        if (currentTab == R.id.photos) {
-            updateSelectionUi(photoAdapter.selectedItems.size)
-        }
+        setupAdapters()
+        setupSelectionToolbar()
+        setupRecycler()
+        setupBottomNavigation()
+        setupPermissionButtons()
+        setupSwipeRefresh()
+        setupObservers()
+        setupBackButton()
+
+        updatePermissionUi()
     }
-)
 
-videoAdapter = MediaGridAdapter(
-    onClick = ::openMedia,
-    onLongClick = { },
-    onSelectionChanged = {
-        if (currentTab == R.id.videos) {
-            updateSelectionUi(videoAdapter.selectedItems.size)
-        }
-    }
-)
-binding.selectionToolbar.setNavigationOnClickListener {
+    private fun setupAdapters() {
 
-    getCurrentMediaAdapter()
-        ?.clearSelection()
-}
-binding.selectionToolbar.setOnMenuItemClickListener { item ->
+        photoAdapter = MediaGridAdapter(
+            onClick = ::openMedia,
+            onLongClick = {},
+            onSelectionChanged = { count ->
 
-    when (item.itemId) {
-
-        R.id.action_share_selected -> {
-            shareSelectedMedia()
-            true
-        }
-
-        R.id.action_favorite_selected -> {
-            toggleSelectedFavorites()
-            true
-        }
-
-        R.id.action_delete_selected -> {
-            deleteSelectedMedia()
-            true
-        }
-
-        else -> false
-    }
-}
-onBackPressedDispatcher.addCallback(
-    this,
-    object : OnBackPressedCallback(true) {
-
-        override fun handleOnBackPressed() {
-
-            when {
-
-                photoAdapter.isSelectionMode -> {
-                    photoAdapter.clearSelection()
-                }
-
-                videoAdapter.isSelectionMode -> {
-                    videoAdapter.clearSelection()
-                }
-
-                else -> {
-                    isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
+                if (currentTab == R.id.photos) {
+                    updateSelectionUi(count)
                 }
             }
-        }
-    }
-)
+        )
+
+        videoAdapter = MediaGridAdapter(
+            onClick = ::openMedia,
+            onLongClick = {},
+            onSelectionChanged = { count ->
+
+                if (currentTab == R.id.videos) {
+                    updateSelectionUi(count)
+                }
+            }
+        )
 
         albumAdapter = AlbumAdapter { album ->
+
             startActivity(
                 Intent(
                     this,
                     AlbumActivity::class.java
                 ).apply {
+
                     putExtra(
                         AlbumActivity.EXTRA_ID,
                         album.id
@@ -171,6 +146,44 @@ onBackPressedDispatcher.addCallback(
                 }
             )
         }
+    }
+
+    private fun setupSelectionToolbar() {
+
+        binding.selectionToolbar.setNavigationOnClickListener {
+
+            getCurrentMediaAdapter()
+                ?.clearSelection()
+        }
+
+        binding.selectionToolbar.setOnMenuItemClickListener { item ->
+
+            when (item.itemId) {
+
+                R.id.action_share_selected -> {
+
+                    shareSelectedMedia()
+                    true
+                }
+
+                R.id.action_favorite_selected -> {
+
+                    toggleSelectedFavorites()
+                    true
+                }
+
+                R.id.action_delete_selected -> {
+
+                    deleteSelectedMedia()
+                    true
+                }
+
+                else -> false
+            }
+        }
+    }
+
+    private fun setupRecycler() {
 
         binding.recycler.itemAnimator = null
 
@@ -194,21 +207,32 @@ onBackPressedDispatcher.addCallback(
                 2
             }
         )
+    }
+
+    private fun setupBottomNavigation() {
 
         binding.bottomNav.setOnItemSelectedListener { menuItem ->
 
+            clearAllSelections()
+
             currentTab = menuItem.itemId
+
+            updateSelectionUi(0)
 
             renderTab()
 
             true
         }
+    }
+
+    private fun setupPermissionButtons() {
 
         binding.retryPermission.setOnClickListener {
             requestMediaPermission()
         }
 
         binding.openSettings.setOnClickListener {
+
             startActivity(
                 Intent(
                     Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
@@ -220,31 +244,69 @@ onBackPressedDispatcher.addCallback(
                 )
             )
         }
+    }
+
+    private fun setupSwipeRefresh() {
 
         binding.swipeRefresh.setOnRefreshListener {
+
             vm.refresh()
+
             binding.swipeRefresh.isRefreshing = false
         }
+    }
+
+    private fun setupObservers() {
 
         vm.images.observe(this) { items ->
+
             if (currentTab == R.id.photos) {
                 submitPhotos(items)
             }
         }
 
         vm.videos.observe(this) { items ->
+
             if (currentTab == R.id.videos) {
                 submitVideos(items)
             }
         }
 
         vm.albums.observe(this) { items ->
+
             if (currentTab == R.id.albums) {
                 submitAlbums(items)
             }
         }
+    }
 
-        updatePermissionUi()
+    private fun setupBackButton() {
+
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+
+                override fun handleOnBackPressed() {
+
+                    val adapter =
+                        getCurrentMediaAdapter()
+
+                    if (
+                        adapter != null &&
+                        adapter.isSelectionMode
+                    ) {
+
+                        adapter.clearSelection()
+
+                    } else {
+
+                        isEnabled = false
+
+                        onBackPressedDispatcher.onBackPressed()
+                    }
+                }
+            }
+        )
     }
 
     override fun onResume() {
@@ -256,6 +318,8 @@ onBackPressedDispatcher.addCallback(
     }
 
     private fun renderTab() {
+
+        updateSelectionUi(0)
 
         binding.emptyText.text =
             when (currentTab) {
@@ -273,316 +337,109 @@ onBackPressedDispatcher.addCallback(
         when (currentTab) {
 
             R.id.photos -> {
+
                 submitPhotos(
                     vm.images.value.orEmpty()
                 )
             }
 
             R.id.videos -> {
+
                 submitVideos(
                     vm.videos.value.orEmpty()
                 )
             }
 
             R.id.albums -> {
+
                 submitAlbums(
                     vm.albums.value.orEmpty()
                 )
             }
         }
     }
-    private fun shareSelectedMedia() {
 
-    val adapter =
-        getCurrentMediaAdapter()
-            ?: return
-
-    val selectedItems =
-        adapter.selectedItems
-
-    if (selectedItems.isEmpty()) {
-        return
-    }
-
-    val uris = ArrayList<Uri>()
-
-    selectedItems.forEach { item ->
-        uris.add(item.uri)
-    }
-
-    startActivity(
-        Intent.createChooser(
-            Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-
-                type = "*/*"
-
-                putParcelableArrayListExtra(
-                    Intent.EXTRA_STREAM,
-                    uris
-                )
-
-                addFlags(
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-            },
-            getString(R.string.share)
-        )
-    )
-    }
-    private fun updateSelectionUi(count: Int) {
-
-    if (count > 0) {
-
-        binding.toolbar.visibility =
-            android.view.View.GONE
-
-        binding.selectionToolbar.visibility =
-            android.view.View.VISIBLE
-
-        binding.selectionToolbar.title =
-            "$count selected"
-
-    } else {
-
-        binding.selectionToolbar.visibility =
-            android.view.View.GONE
-
-        binding.toolbar.visibility =
-            android.view.View.VISIBLE
-
-        binding.toolbar.title =
-            getString(R.string.app_name)
-    }
-}
-
-    private fun toggleSelectedFavorites() {
-
-    val adapter =
-        getCurrentMediaAdapter()
-            ?: return
-
-    val selectedItems =
-        adapter.selectedItems.toList()
-
-    if (selectedItems.isEmpty()) {
-        return
-    }
-
-    val allFavorites =
-        selectedItems.all {
-            it.isFavorite
-        }
-
-    selectedItems.forEach { item ->
-
-        if (allFavorites) {
-
-            if (item.isFavorite) {
-
-                vm.toggleFavorite(item) { }
-
-            }
-
-        } else {
-
-            if (!item.isFavorite) {
-
-                vm.toggleFavorite(item) { }
-            }
-        }
-    }
-
-    adapter.clearSelection()
-
-    vm.refresh()
-    }
     private fun submitPhotos(
         items: List<MediaItem>
     ) {
 
-        if (binding.recycler.adapter !== photoAdapter) {
-            binding.recycler.adapter = photoAdapter
+        if (
+            binding.recycler.adapter !== photoAdapter
+        ) {
+            binding.recycler.adapter =
+                photoAdapter
         }
 
         if (
-            binding.recycler.layoutManager !== photoLayoutManager
+            binding.recycler.layoutManager !==
+            photoLayoutManager
         ) {
             binding.recycler.layoutManager =
                 photoLayoutManager
         }
 
-        val photos = items
-            .filter {
+        val photos =
+            items.filter {
                 it.type == MediaType.IMAGE
             }
 
         photoAdapter.submitList(
             ArrayList(
-    sortMedia(
-        photos,
-        photoSortMode
-    )
-)
+                sortMedia(
+                    photos,
+                    photoSortMode
+                )
+            )
         )
 
         binding.emptyGroup.visibility =
             if (photos.isEmpty()) {
-                android.view.View.VISIBLE
+                View.VISIBLE
             } else {
-                android.view.View.GONE
+                View.GONE
             }
     }
 
-    private fun deleteSelectedMedia() {
-
-    val adapter =
-        getCurrentMediaAdapter()
-            ?: return
-
-    val selectedItems =
-        adapter.selectedItems.toList()
-
-    if (selectedItems.isEmpty()) {
-        return
-    }
-
-    AlertDialog.Builder(this)
-        .setTitle("Delete ${selectedItems.size} items?")
-        .setMessage(
-            "These items will be moved to the trash."
-        )
-        .setNegativeButton(
-            R.string.cancel,
-            null
-        )
-        .setPositiveButton(
-            R.string.delete
-        ) { _, _ ->
-
-            deleteMediaItems(
-                selectedItems
-            )
-
-            adapter.clearSelection()
-        }
-        .show()
-    }
-
-    private fun deleteMediaItems(
-    items: List<MediaItem>
-) {
-
-    runCatching {
-
-        val uris =
-            items.map {
-                it.uri
-            }
-
-        if (Build.VERSION.SDK_INT >= 30) {
-
-            startIntentSenderForResult(
-                android.provider.MediaStore
-                    .createDeleteRequest(
-                        contentResolver,
-                        uris
-                    )
-                    .intentSender,
-                43,
-                null,
-                0,
-                0,
-                0
-            )
-
-        } else {
-
-            items.forEach { item ->
-
-                contentResolver.delete(
-                    item.uri,
-                    null,
-                    null
-                )
-            }
-
-            vm.refresh()
-        }
-
-    }.onFailure {
-
-        Snackbar.make(
-            binding.root,
-            R.string.delete_failed,
-            Snackbar.LENGTH_SHORT
-        ).show()
-    }
-    }
     private fun submitVideos(
         items: List<MediaItem>
     ) {
 
-        if (binding.recycler.adapter !== videoAdapter) {
-            binding.recycler.adapter = videoAdapter
+        if (
+            binding.recycler.adapter !== videoAdapter
+        ) {
+            binding.recycler.adapter =
+                videoAdapter
         }
 
         if (
-            binding.recycler.layoutManager !== videoLayoutManager
+            binding.recycler.layoutManager !==
+            videoLayoutManager
         ) {
             binding.recycler.layoutManager =
                 videoLayoutManager
         }
 
-        val videos = items
-            .filter {
+        val videos =
+            items.filter {
                 it.type == MediaType.VIDEO
             }
 
         videoAdapter.submitList(
             ArrayList(
-    sortMedia(
-        videos,
-        videoSortMode
-    )
-)
+                sortMedia(
+                    videos,
+                    videoSortMode
+                )
+            )
         )
 
         binding.emptyGroup.visibility =
             if (videos.isEmpty()) {
-                android.view.View.VISIBLE
+                View.VISIBLE
             } else {
-                android.view.View.GONE
+                View.GONE
             }
     }
-
-    private fun sortMedia(
-    items: List<MediaItem>,
-    sortMode: SortMode
-): List<MediaItem> {
-
-    return when (sortMode) {
-
-        SortMode.NEWEST ->
-            items.sortedByDescending {
-                it.dateAddedSeconds
-            }
-
-        SortMode.OLDEST ->
-            items.sortedBy {
-                it.dateAddedSeconds
-            }
-
-        SortMode.NAME_ASC ->
-            items.sortedBy {
-                it.name.lowercase()
-            }
-
-        SortMode.NAME_DESC ->
-            items.sortedByDescending {
-                it.name.lowercase()
-            }
-    }
-}
 
     private fun submitAlbums(
         items: List<Album>
@@ -591,115 +448,417 @@ onBackPressedDispatcher.addCallback(
         if (
             binding.recycler.adapter !== albumAdapter
         ) {
-            binding.recycler.adapter = albumAdapter
+            binding.recycler.adapter =
+                albumAdapter
         }
 
         if (
-            binding.recycler.layoutManager !== albumLayoutManager
+            binding.recycler.layoutManager !==
+            albumLayoutManager
         ) {
             binding.recycler.layoutManager =
                 albumLayoutManager
         }
 
-        albumAdapter.submitList(items)
+        albumAdapter.submitList(
+            ArrayList(items)
+        )
 
         binding.emptyGroup.visibility =
             if (items.isEmpty()) {
-                android.view.View.VISIBLE
+                View.VISIBLE
             } else {
-                android.view.View.GONE
+                View.GONE
             }
+    }
+
+    private fun getCurrentMediaAdapter(): MediaGridAdapter? {
+
+        return when (currentTab) {
+
+            R.id.photos ->
+                photoAdapter
+
+            R.id.videos ->
+                videoAdapter
+
+            else ->
+                null
+        }
+    }
+
+    private fun clearAllSelections() {
+
+        if (::photoAdapter.isInitialized) {
+            photoAdapter.clearSelection()
+        }
+
+        if (::videoAdapter.isInitialized) {
+            videoAdapter.clearSelection()
+        }
+    }
+
+    private fun updateSelectionUi(count: Int) {
+
+        if (
+            count > 0 &&
+            (
+                currentTab == R.id.photos ||
+                currentTab == R.id.videos
+            )
+        ) {
+
+            binding.toolbar.visibility =
+                View.GONE
+
+            binding.selectionToolbar.visibility =
+                View.VISIBLE
+
+            binding.selectionToolbar.title =
+                "$count selected"
+
+            updateFavoriteMenuTitle()
+
+        } else {
+
+            binding.selectionToolbar.visibility =
+                View.GONE
+
+            binding.toolbar.visibility =
+                View.VISIBLE
+
+            binding.toolbar.title =
+                getString(R.string.app_name)
+        }
+    }
+
+    private fun updateFavoriteMenuTitle() {
+
+        val adapter =
+            getCurrentMediaAdapter()
+                ?: return
+
+        val selectedItems =
+            adapter.selectedItems
+
+        if (selectedItems.isEmpty()) {
+            return
+        }
+
+        val allFavorites =
+            selectedItems.all {
+                it.isFavorite
+            }
+
+        val menuItem =
+            binding.selectionToolbar.menu.findItem(
+                R.id.action_favorite_selected
+            )
+
+        if (allFavorites) {
+
+            menuItem.title =
+                getString(
+                    R.string.remove_favorite
+                )
+
+        } else {
+
+            menuItem.title =
+                getString(
+                    R.string.add_favorite
+                )
+        }
+    }
+
+    private fun shareSelectedMedia() {
+
+        val adapter =
+            getCurrentMediaAdapter()
+                ?: return
+
+        val selectedItems =
+            adapter.selectedItems
+
+        if (selectedItems.isEmpty()) {
+            return
+        }
+
+        val uris = ArrayList<Uri>()
+
+        selectedItems.forEach { item ->
+            uris.add(item.uri)
+        }
+
+        val shareIntent =
+            if (uris.size == 1) {
+
+                Intent(Intent.ACTION_SEND).apply {
+
+                    type =
+                        selectedItems.first()
+                            .mimeType
+                            .ifBlank {
+                                "*/*"
+                            }
+
+                    putExtra(
+                        Intent.EXTRA_STREAM,
+                        uris.first()
+                    )
+                }
+
+            } else {
+
+                Intent(
+                    Intent.ACTION_SEND_MULTIPLE
+                ).apply {
+
+                    type = "*/*"
+
+                    putParcelableArrayListExtra(
+                        Intent.EXTRA_STREAM,
+                        uris
+                    )
+                }
+            }
+
+        shareIntent.addFlags(
+            Intent.FLAG_GRANT_READ_URI_PERMISSION
+        )
+
+        startActivity(
+            Intent.createChooser(
+                shareIntent,
+                getString(R.string.share)
+            )
+        )
+    }
+
+    private fun toggleSelectedFavorites() {
+
+        val adapter =
+            getCurrentMediaAdapter()
+                ?: return
+
+        val selectedItems =
+            adapter.selectedItems.toList()
+
+        if (selectedItems.isEmpty()) {
+            return
+        }
+
+        val allFavorites =
+            selectedItems.all {
+                it.isFavorite
+            }
+
+        selectedItems.forEach { item ->
+
+            if (allFavorites) {
+
+                if (item.isFavorite) {
+
+                    vm.toggleFavorite(item) {}
+                }
+
+            } else {
+
+                if (!item.isFavorite) {
+
+                    vm.toggleFavorite(item) {}
+                }
+            }
+        }
+
+        adapter.clearSelection()
+
+        vm.refresh()
+    }
+
+    private fun deleteSelectedMedia() {
+
+        val adapter =
+            getCurrentMediaAdapter()
+                ?: return
+
+        val selectedItems =
+            adapter.selectedItems.toList()
+
+        if (selectedItems.isEmpty()) {
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle(
+                "Delete ${selectedItems.size} items?"
+            )
+            .setMessage(
+                "These items will be moved to the trash."
+            )
+            .setNegativeButton(
+                R.string.cancel,
+                null
+            )
+            .setPositiveButton(
+                R.string.delete
+            ) { _, _ ->
+
+                deleteMediaItems(
+                    selectedItems
+                )
+
+                adapter.clearSelection()
+            }
+            .show()
+    }
+
+    private fun deleteMediaItems(
+        items: List<MediaItem>
+    ) {
+
+        runCatching {
+
+            val uris =
+                items.map {
+                    it.uri
+                }
+
+            if (Build.VERSION.SDK_INT >= 30) {
+
+                startIntentSenderForResult(
+                    MediaStore.createDeleteRequest(
+                        contentResolver,
+                        uris
+                    ).intentSender,
+                    DELETE_MULTIPLE_REQUEST,
+                    null,
+                    0,
+                    0,
+                    0
+                )
+
+            } else {
+
+                items.forEach { item ->
+
+                    contentResolver.delete(
+                        item.uri,
+                        null,
+                        null
+                    )
+                }
+
+                vm.refresh()
+            }
+
+        }.onFailure {
+
+            Snackbar.make(
+                binding.root,
+                R.string.delete_failed,
+                Snackbar.LENGTH_SHORT
+            ).show()
+        }
     }
 
     private fun showSortDialog() {
 
-    val options = arrayOf(
-        "Newest first",
-        "Oldest first",
-        "Name A–Z",
-        "Name Z–A"
-    )
+        val options = arrayOf(
+            "Newest first",
+            "Oldest first",
+            "Name A–Z",
+            "Name Z–A"
+        )
 
-    val currentSortMode =
-        if (currentTab == R.id.photos) {
-            photoSortMode
-        } else {
-            videoSortMode
-        }
+        val currentSortMode =
+            if (currentTab == R.id.photos) {
+                photoSortMode
+            } else {
+                videoSortMode
+            }
 
-    val selected = when (currentSortMode) {
-        SortMode.NEWEST -> 0
-        SortMode.OLDEST -> 1
-        SortMode.NAME_ASC -> 2
-        SortMode.NAME_DESC -> 3
-    }
+        val selected =
+            when (currentSortMode) {
 
-    AlertDialog.Builder(this)
-        .setTitle("Sort by")
-        .setSingleChoiceItems(
-            options,
-            selected
-        ) { dialog, which ->
+                SortMode.NEWEST -> 0
+                SortMode.OLDEST -> 1
+                SortMode.NAME_ASC -> 2
+                SortMode.NAME_DESC -> 3
+            }
 
-            val newSortMode =
-                when (which) {
-                    0 -> SortMode.NEWEST
-                    1 -> SortMode.OLDEST
-                    2 -> SortMode.NAME_ASC
-                    else -> SortMode.NAME_DESC
-                }
+        AlertDialog.Builder(this)
+            .setTitle("Sort by")
+            .setSingleChoiceItems(
+                options,
+                selected
+            ) { dialog, which ->
 
-            dialog.dismiss()
+                val newSortMode =
+                    when (which) {
 
-            when (currentTab) {
+                        0 -> SortMode.NEWEST
+                        1 -> SortMode.OLDEST
+                        2 -> SortMode.NAME_ASC
+                        else -> SortMode.NAME_DESC
+                    }
 
-                R.id.photos -> {
+                dialog.dismiss()
 
-                    photoSortMode = newSortMode
+                when (currentTab) {
 
-                    val photos =
-                        vm.images.value.orEmpty()
-                            .filter {
-                                it.type == MediaType.IMAGE
-                            }
+                    R.id.photos -> {
 
-                    photoAdapter.submitList(null)
+                        photoSortMode =
+                            newSortMode
 
-                    photoAdapter.submitList(
-                        ArrayList(
-                            sortMedia(
-                                photos,
-                                photoSortMode
-                            )
+                        submitPhotos(
+                            vm.images.value.orEmpty()
                         )
-                    )
-                }
+                    }
 
-                R.id.videos -> {
+                    R.id.videos -> {
 
-                    videoSortMode = newSortMode
+                        videoSortMode =
+                            newSortMode
 
-                    val videos =
-                        vm.videos.value.orEmpty()
-                            .filter {
-                                it.type == MediaType.VIDEO
-                            }
-
-                    videoAdapter.submitList(null)
-
-                    videoAdapter.submitList(
-                        ArrayList(
-                            sortMedia(
-                                videos,
-                                videoSortMode
-                            )
+                        submitVideos(
+                            vm.videos.value.orEmpty()
                         )
-                    )
+                    }
                 }
             }
+            .show()
+    }
+
+    private fun sortMedia(
+        items: List<MediaItem>,
+        sortMode: SortMode
+    ): List<MediaItem> {
+
+        return when (sortMode) {
+
+            SortMode.NEWEST ->
+                items.sortedByDescending {
+                    it.dateAddedSeconds
+                }
+
+            SortMode.OLDEST ->
+                items.sortedBy {
+                    it.dateAddedSeconds
+                }
+
+            SortMode.NAME_ASC ->
+                items.sortedBy {
+                    it.name.lowercase()
+                }
+
+            SortMode.NAME_DESC ->
+                items.sortedByDescending {
+                    it.name.lowercase()
+                }
         }
-        .show()
-}
+    }
 
     private fun calculateColumns(): Int {
 
@@ -708,68 +867,17 @@ onBackPressedDispatcher.addCallback(
                 resources.displayMetrics.density
 
         return when {
+
             widthDp >= 900 -> 6
             widthDp >= 700 -> 5
             widthDp >= 500 -> 4
             else -> 3
         }
     }
-    private fun getCurrentMediaAdapter(): MediaGridAdapter? {
 
-    return when (currentTab) {
+    private fun hasMediaPermission(): Boolean {
 
-        R.id.photos -> photoAdapter
-
-        R.id.videos -> videoAdapter
-
-        else -> null
-    }
-    }
-    private fun updateFavoriteMenuTitle() {
-
-    val adapter =
-        getCurrentMediaAdapter()
-            ?: return
-
-    val selectedItems =
-        adapter.selectedItems
-
-    if (selectedItems.isEmpty()) {
-        return
-    }
-
-    val allFavorites =
-        selectedItems.all {
-            it.isFavorite
-        }
-
-    val menuItem =
-        binding.selectionToolbar.menu.findItem(
-            R.id.action_favorite_selected
-        )
-
-    if (allFavorites) {
-
-        menuItem.title =
-            "Remove from favorites"
-
-        menuItem.setIcon(
-            android.R.drawable.btn_star_big_off
-        )
-
-    } else {
-
-        menuItem.title =
-            "Add to favorites"
-
-        menuItem.setIcon(
-            android.R.drawable.btn_star_big_on
-        )
-    }
-    }
-
-    private fun hasMediaPermission(): Boolean =
-        if (Build.VERSION.SDK_INT >= 33) {
+        return if (Build.VERSION.SDK_INT >= 33) {
 
             ContextCompat.checkSelfPermission(
                 this,
@@ -788,6 +896,7 @@ onBackPressedDispatcher.addCallback(
                 Manifest.permission.READ_EXTERNAL_STORAGE
             ) == PackageManager.PERMISSION_GRANTED
         }
+    }
 
     private fun requestMediaPermission() {
 
@@ -811,20 +920,21 @@ onBackPressedDispatcher.addCallback(
 
     private fun updatePermissionUi() {
 
-        val granted = hasMediaPermission()
+        val granted =
+            hasMediaPermission()
 
         binding.permissionGroup.visibility =
             if (granted) {
-                android.view.View.GONE
+                View.GONE
             } else {
-                android.view.View.VISIBLE
+                View.VISIBLE
             }
 
         binding.contentGroup.visibility =
             if (granted) {
-                android.view.View.VISIBLE
+                View.VISIBLE
             } else {
-                android.view.View.GONE
+                View.GONE
             }
 
         if (granted) {
@@ -840,20 +950,28 @@ onBackPressedDispatcher.addCallback(
 
             val images =
                 sortMedia(
-    vm.images.value.orEmpty(),
-    photoSortMode
-)
+                    vm.images.value.orEmpty()
+                        .filter {
+                            it.type == MediaType.IMAGE
+                        },
+                    photoSortMode
+                )
 
-            val imageUris = ArrayList(
-                images.map {
-                    it.uri.toString()
-                }
-            )
+            val imageUris =
+                ArrayList(
+                    images.map {
+                        it.uri.toString()
+                    }
+                )
 
             val position =
                 images.indexOfFirst {
                     it.uri == item.uri
                 }
+
+            if (position < 0) {
+                return
+            }
 
             val intent = Intent(
                 this,
@@ -874,79 +992,48 @@ onBackPressedDispatcher.addCallback(
 
         } else {
 
-    // Get only videos, using the current video's sort mode
-    val videos = sortMedia(
-        vm.videos.value.orEmpty()
-            .filter {
-                it.type == MediaType.VIDEO
-            },
-        videoSortMode
-    )
+            val videos =
+                sortMedia(
+                    vm.videos.value.orEmpty()
+                        .filter {
+                            it.type == MediaType.VIDEO
+                        },
+                    videoSortMode
+                )
 
-    val videoUris = ArrayList(
-        videos.map {
-            it.uri.toString()
-        }
-    )
-
-    val position = videos.indexOfFirst {
-        it.uri == item.uri
-    }
-
-    val intent = Intent(
-        this,
-        VideoPlayerActivity::class.java
-    )
-
-    intent.putStringArrayListExtra(
-        VideoPlayerActivity.EXTRA_VIDEOS,
-        videoUris
-    )
-
-    intent.putExtra(
-        VideoPlayerActivity.EXTRA_POSITION,
-        position
-    )
-
-    startActivity(intent)
-}
-    }
-
-    private fun showActions(
-        item: MediaItem
-    ) {
-
-        val choices = arrayOf(
-            getString(R.string.share),
-            if (item.isFavorite) {
-                getString(R.string.remove_favorite)
-            } else {
-                getString(R.string.add_favorite)
-            },
-            getString(R.string.info),
-            getString(R.string.delete)
-        )
-
-        AlertDialog.Builder(this)
-            .setTitle(item.name)
-            .setItems(choices) { _, which ->
-
-                when (which) {
-                    0 -> share(item)
-
-                    1 -> vm.toggleFavorite(item) {
-                        renderTab()
+            val videoUris =
+                ArrayList(
+                    videos.map {
+                        it.uri.toString()
                     }
+                )
 
-                    2 -> MediaInfoDialog.show(
-                        this,
-                        item
-                    )
-
-                    3 -> delete(item)
+            val position =
+                videos.indexOfFirst {
+                    it.uri == item.uri
                 }
+
+            if (position < 0) {
+                return
             }
-            .show()
+
+            val intent = Intent(
+                this,
+                VideoPlayerActivity::class.java
+            )
+
+            intent.putStringArrayListExtra(
+                VideoPlayerActivity.EXTRA_VIDEOS,
+                videoUris
+            )
+
+            intent.putExtra(
+                VideoPlayerActivity.EXTRA_POSITION,
+                position
+            )
+
+            startActivity(intent)
+        }
     }
 
     private fun share(
@@ -1003,13 +1090,11 @@ onBackPressedDispatcher.addCallback(
                     if (Build.VERSION.SDK_INT >= 30) {
 
                         startIntentSenderForResult(
-                            android.provider.MediaStore
-                                .createDeleteRequest(
-                                    contentResolver,
-                                    listOf(item.uri)
-                                )
-                                .intentSender,
-                            42,
+                            MediaStore.createDeleteRequest(
+                                contentResolver,
+                                listOf(item.uri)
+                            ).intentSender,
+                            DELETE_SINGLE_REQUEST,
                             null,
                             0,
                             0,
@@ -1023,6 +1108,8 @@ onBackPressedDispatcher.addCallback(
                             null,
                             null
                         )
+
+                        vm.refresh()
                     }
 
                 }.onFailure {
@@ -1038,23 +1125,26 @@ onBackPressedDispatcher.addCallback(
     }
 
     override fun onActivityResult(
-    requestCode: Int,
-    resultCode: Int,
-    data: Intent?
-) {
-
-    super.onActivityResult(
-        requestCode,
-        resultCode,
-        data
-    )
-
-    if (
-        requestCode == 42 ||
-        requestCode == 43
+        requestCode: Int,
+        resultCode: Int,
+        data: Intent?
     ) {
-        vm.refresh()
-    }
+
+        super.onActivityResult(
+            requestCode,
+            resultCode,
+            data
+        )
+
+        if (
+            requestCode ==
+            DELETE_SINGLE_REQUEST ||
+            requestCode ==
+            DELETE_MULTIPLE_REQUEST
+        ) {
+
+            vm.refresh()
+        }
     }
 
     override fun onCreateOptionsMenu(
@@ -1093,6 +1183,7 @@ onBackPressedDispatcher.addCallback(
                     currentTab == R.id.photos ||
                     currentTab == R.id.videos
                 ) {
+
                     showSortDialog()
                 }
 
