@@ -98,6 +98,39 @@ videoAdapter = MediaGridAdapter(
         updateSelectionUi(count)
     }
 )
+binding.selectionToolbar.setNavigationOnClickListener {
+
+    getCurrentMediaAdapter()
+        ?.clearSelection()
+}
+binding.selectionToolbar.setOnMenuItemClickListener { menuItem ->
+
+    when (menuItem.itemId) {
+
+        R.id.action_share_selected -> {
+
+            shareSelectedMedia()
+
+            true
+        }
+
+        R.id.action_favorite_selected -> {
+
+            toggleSelectedFavorites()
+
+            true
+        }
+
+        R.id.action_delete_selected -> {
+
+            deleteSelectedMedia()
+
+            true
+        }
+
+        else -> false
+    }
+}
 onBackPressedDispatcher.addCallback(
     this,
     object : OnBackPressedCallback(true) {
@@ -261,20 +294,113 @@ onBackPressedDispatcher.addCallback(
             }
         }
     }
+    private fun shareSelectedMedia() {
+
+    val adapter =
+        getCurrentMediaAdapter()
+            ?: return
+
+    val selectedItems =
+        adapter.selectedItems
+
+    if (selectedItems.isEmpty()) {
+        return
+    }
+
+    val uris = ArrayList<Uri>()
+
+    selectedItems.forEach { item ->
+        uris.add(item.uri)
+    }
+
+    startActivity(
+        Intent.createChooser(
+            Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+
+                type = "*/*"
+
+                putParcelableArrayListExtra(
+                    Intent.EXTRA_STREAM,
+                    uris
+                )
+
+                addFlags(
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            },
+            getString(R.string.share)
+        )
+    )
+    }
     private fun updateSelectionUi(count: Int) {
 
     if (count > 0) {
 
-        binding.toolbar.title =
+        binding.toolbar.visibility =
+            android.view.View.GONE
+
+        binding.selectionToolbar.visibility =
+            android.view.View.VISIBLE
+
+        binding.selectionToolbar.title =
             "$count selected"
 
+        updateFavoriteMenuTitle()
+
     } else {
+
+        binding.selectionToolbar.visibility =
+            android.view.View.GONE
+
+        binding.toolbar.visibility =
+            android.view.View.VISIBLE
 
         binding.toolbar.title =
             getString(R.string.app_name)
     }
+}
+
+    private fun toggleSelectedFavorites() {
+
+    val adapter =
+        getCurrentMediaAdapter()
+            ?: return
+
+    val selectedItems =
+        adapter.selectedItems.toList()
+
+    if (selectedItems.isEmpty()) {
+        return
     }
 
+    val allFavorites =
+        selectedItems.all {
+            it.isFavorite
+        }
+
+    selectedItems.forEach { item ->
+
+        if (allFavorites) {
+
+            if (item.isFavorite) {
+
+                vm.toggleFavorite(item) { }
+
+            }
+
+        } else {
+
+            if (!item.isFavorite) {
+
+                vm.toggleFavorite(item) { }
+            }
+        }
+    }
+
+    adapter.clearSelection()
+
+    vm.refresh()
+    }
     private fun submitPhotos(
         items: List<MediaItem>
     ) {
@@ -312,6 +438,91 @@ onBackPressedDispatcher.addCallback(
             }
     }
 
+    private fun deleteSelectedMedia() {
+
+    val adapter =
+        getCurrentMediaAdapter()
+            ?: return
+
+    val selectedItems =
+        adapter.selectedItems.toList()
+
+    if (selectedItems.isEmpty()) {
+        return
+    }
+
+    AlertDialog.Builder(this)
+        .setTitle("Delete ${selectedItems.size} items?")
+        .setMessage(
+            "These items will be moved to the trash."
+        )
+        .setNegativeButton(
+            R.string.cancel,
+            null
+        )
+        .setPositiveButton(
+            R.string.delete
+        ) { _, _ ->
+
+            deleteMediaItems(
+                selectedItems
+            )
+
+            adapter.clearSelection()
+        }
+        .show()
+    }
+
+    private fun deleteMediaItems(
+    items: List<MediaItem>
+) {
+
+    runCatching {
+
+        val uris =
+            items.map {
+                it.uri
+            }
+
+        if (Build.VERSION.SDK_INT >= 30) {
+
+            startIntentSenderForResult(
+                android.provider.MediaStore
+                    .createDeleteRequest(
+                        contentResolver,
+                        uris
+                    )
+                    .intentSender,
+                43,
+                null,
+                0,
+                0,
+                0
+            )
+
+        } else {
+
+            items.forEach { item ->
+
+                contentResolver.delete(
+                    item.uri,
+                    null,
+                    null
+                )
+            }
+
+            vm.refresh()
+        }
+
+    }.onFailure {
+
+        Snackbar.make(
+            binding.root,
+            R.string.delete_failed,
+            Snackbar.LENGTH_SHORT
+        ).show()
+    }
+    }
     private fun submitVideos(
         items: List<MediaItem>
     ) {
@@ -507,6 +718,59 @@ onBackPressedDispatcher.addCallback(
             widthDp >= 500 -> 4
             else -> 3
         }
+    }
+    private fun getCurrentMediaAdapter(): MediaGridAdapter? {
+
+    return when (currentTab) {
+
+        R.id.photos -> photoAdapter
+
+        R.id.videos -> videoAdapter
+
+        else -> null
+    }
+    }
+    private fun updateFavoriteMenuTitle() {
+
+    val adapter =
+        getCurrentMediaAdapter()
+            ?: return
+
+    val selectedItems =
+        adapter.selectedItems
+
+    if (selectedItems.isEmpty()) {
+        return
+    }
+
+    val allFavorites =
+        selectedItems.all {
+            it.isFavorite
+        }
+
+    val menuItem =
+        binding.selectionToolbar.menu.findItem(
+            R.id.action_favorite_selected
+        )
+
+    if (allFavorites) {
+
+        menuItem.title =
+            "Remove from favorites"
+
+        menuItem.setIcon(
+            android.R.drawable.btn_star_big_off
+        )
+
+    } else {
+
+        menuItem.title =
+            "Add to favorites"
+
+        menuItem.setIcon(
+            android.R.drawable.btn_star_big_on
+        )
+    }
     }
 
     private fun hasMediaPermission(): Boolean =
@@ -779,20 +1043,23 @@ onBackPressedDispatcher.addCallback(
     }
 
     override fun onActivityResult(
-        requestCode: Int,
-        resultCode: Int,
-        data: Intent?
+    requestCode: Int,
+    resultCode: Int,
+    data: Intent?
+) {
+
+    super.onActivityResult(
+        requestCode,
+        resultCode,
+        data
+    )
+
+    if (
+        requestCode == 42 ||
+        requestCode == 43
     ) {
-
-        super.onActivityResult(
-            requestCode,
-            resultCode,
-            data
-        )
-
-        if (requestCode == 42) {
-            vm.refresh()
-        }
+        vm.refresh()
+    }
     }
 
     override fun onCreateOptionsMenu(
