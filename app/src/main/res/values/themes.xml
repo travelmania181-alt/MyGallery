@@ -6,8 +6,5 @@
         parent="Theme.Material3.DayNight.NoActionBar">
     </style>
 
-    <style name="ShapeAppearance.Gallery">
-        <item name="cornerSize">16dp</item>
-    </style>
 
 </resources>
