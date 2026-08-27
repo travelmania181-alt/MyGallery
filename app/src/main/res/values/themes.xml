@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.MyGallery" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Main app theme -->
+    <style
+        name="Theme.MyGallery"
+        parent="Theme.Material3.DayNight.NoActionBar">
     </style>
 
-    <style name="ShapeAppearance.Gallery.Rounded">
+    <style name="ShapeAppearance.Gallery">
         <item name="cornerSize">16dp</item>
     </style>
 
