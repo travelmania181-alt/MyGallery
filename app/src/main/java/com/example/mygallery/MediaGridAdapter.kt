@@ -18,7 +18,8 @@ import java.util.Locale
 
 class MediaGridAdapter(
     private val onClick: (MediaItem) -> Unit,
-    private val onLongClick: (MediaItem) -> Unit
+    private val onLongClick: (MediaItem) -> Unit,
+    private val onSelectionChanged: (Int) -> Unit
 ) : ListAdapter<MediaItem, MediaGridAdapter.Holder>(DIFF) {
 
     private val selectedUris = mutableSetOf<String>()
@@ -173,6 +174,7 @@ class MediaGridAdapter(
         } else {
             selectedUris.add(uri)
         }
+        onSelectionChanged(selectedUris.size)
 
         notifyItemChanged(
             currentList.indexOfFirst {
@@ -183,14 +185,16 @@ class MediaGridAdapter(
 
     fun clearSelection() {
 
-        if (selectedUris.isEmpty()) {
-            return
-        }
-
-        selectedUris.clear()
-
-        notifyDataSetChanged()
+    if (selectedUris.isEmpty()) {
+        return
     }
+
+    selectedUris.clear()
+
+    onSelectionChanged(0)
+
+    notifyDataSetChanged()
+}
 
     fun selectItem(item: MediaItem) {
 
