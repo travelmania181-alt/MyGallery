@@ -81,16 +81,22 @@ private var videoSortMode = SortMode.NEWEST
         }
 
         // Photos adapter
-        photoAdapter = MediaGridAdapter(
-            onClick = ::openMedia,
-            onLongClick = ::showActions
-        )
+photoAdapter = MediaGridAdapter(
+    onClick = ::openMedia,
+    onLongClick = { },
+    onSelectionChanged = { count ->
+        updateSelectionUi(count)
+    }
+)
 
-        // Videos adapter
-        videoAdapter = MediaGridAdapter(
-            onClick = ::openMedia,
-            onLongClick = ::showActions
-        )
+// Videos adapter
+videoAdapter = MediaGridAdapter(
+    onClick = ::openMedia,
+    onLongClick = { },
+    onSelectionChanged = { count ->
+        updateSelectionUi(count)
+    }
+)
 
         albumAdapter = AlbumAdapter { album ->
             startActivity(
@@ -229,6 +235,19 @@ private var videoSortMode = SortMode.NEWEST
                 )
             }
         }
+    }
+    private fun updateSelectionUi(count: Int) {
+
+    if (count > 0) {
+
+        binding.toolbar.title =
+            "$count selected"
+
+    } else {
+
+        binding.toolbar.title =
+            getString(R.string.app_name)
+    }
     }
 
     private fun submitPhotos(
