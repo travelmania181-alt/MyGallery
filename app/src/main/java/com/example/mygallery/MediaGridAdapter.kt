@@ -1,6 +1,5 @@
 package com.example.mygallery
 
-import android.graphics.Bitmap
 import android.util.Size
 import android.view.LayoutInflater
 import android.view.View
@@ -21,6 +20,16 @@ class MediaGridAdapter(
     private val onClick: (MediaItem) -> Unit,
     private val onLongClick: (MediaItem) -> Unit
 ) : ListAdapter<MediaItem, MediaGridAdapter.Holder>(DIFF) {
+
+    private val selectedUris = mutableSetOf<String>()
+
+    val selectedItems: List<MediaItem>
+        get() = currentList.filter {
+            it.uri.toString() in selectedUris
+        }
+
+    val isSelectionMode: Boolean
+        get() = selectedUris.isNotEmpty()
 
     companion object {
 
@@ -114,12 +123,37 @@ class MediaGridAdapter(
                     View.GONE
                 }
 
+            // Show selected state
+            binding.root.isSelected =
+                item.uri.toString() in selectedUris
+
+            binding.root.alpha =
+                if (binding.root.isSelected) {
+                    0.65f
+                } else {
+                    1f
+                }
+
             binding.root.setOnClickListener {
-                onClick(item)
+
+                if (isSelectionMode) {
+
+                    toggleSelection(item)
+
+                } else {
+
+                    onClick(item)
+                }
             }
 
             binding.root.setOnLongClickListener {
+
+                if (!isSelectionMode) {
+                    toggleSelection(item)
+                }
+
                 onLongClick(item)
+
                 true
             }
         }
@@ -130,6 +164,45 @@ class MediaGridAdapter(
             binding.thumbnail.tag = null
             binding.thumbnail.setImageDrawable(null)
         }
+    }
+
+    fun toggleSelection(item: MediaItem) {
+
+        val uri = item.uri.toString()
+
+        if (uri in selectedUris) {
+            selectedUris.remove(uri)
+        } else {
+            selectedUris.add(uri)
+        }
+
+        notifyItemChanged(
+            currentList.indexOfFirst {
+                it.uri == item.uri
+            }
+        )
+    }
+
+    fun clearSelection() {
+
+        if (selectedUris.isEmpty()) {
+            return
+        }
+
+        selectedUris.clear()
+
+        notifyDataSetChanged()
+    }
+
+    fun selectItem(item: MediaItem) {
+
+        selectedUris.add(item.uri.toString())
+
+        notifyItemChanged(
+            currentList.indexOfFirst {
+                it.uri == item.uri
+            }
+        )
     }
 
     override fun onCreateViewHolder(
