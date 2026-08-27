@@ -148,13 +148,11 @@ class MediaGridAdapter(
 
             binding.root.setOnLongClickListener {
 
-                if (!isSelectionMode) {
-                    toggleSelection(item)
-                }
+    if (!isSelectionMode) {
+        toggleSelection(item)
+    }
 
-                onLongClick(item)
-
-                true
+    true
             }
         }
 
