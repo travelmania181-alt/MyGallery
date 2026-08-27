@@ -124,17 +124,20 @@ class MediaGridAdapter(
                     View.GONE
                 }
 
-            // Show selected state
-            binding.root.isSelected =
+            // Selected visual state
+            val isSelected =
                 item.uri.toString() in selectedUris
 
+            binding.root.isSelected = isSelected
+
             binding.root.alpha =
-                if (binding.root.isSelected) {
+                if (isSelected) {
                     0.65f
                 } else {
                     1f
                 }
 
+            // Normal click or multi-selection click
             binding.root.setOnClickListener {
 
                 if (isSelectionMode) {
@@ -147,21 +150,34 @@ class MediaGridAdapter(
                 }
             }
 
+            // Long press starts multi-selection
             binding.root.setOnLongClickListener {
 
-    if (!isSelectionMode) {
-        toggleSelection(item)
-    }
+                if (!isSelectionMode) {
 
-    true
+                    toggleSelection(item)
+
+                } else {
+
+                    // If already in selection mode,
+                    // long press also toggles this item
+                    toggleSelection(item)
+                }
+
+                true
             }
         }
 
         fun clear() {
+
             thumbnailJob?.cancel()
             thumbnailJob = null
+
             binding.thumbnail.tag = null
             binding.thumbnail.setImageDrawable(null)
+
+            binding.root.alpha = 1f
+            binding.root.isSelected = false
         }
     }
 
@@ -170,41 +186,60 @@ class MediaGridAdapter(
         val uri = item.uri.toString()
 
         if (uri in selectedUris) {
+
             selectedUris.remove(uri)
+
         } else {
+
             selectedUris.add(uri)
         }
+
         onSelectionChanged(selectedUris.size)
 
-        notifyItemChanged(
+        val position =
             currentList.indexOfFirst {
                 it.uri == item.uri
             }
-        )
+
+        if (position != -1) {
+
+            notifyItemChanged(position)
+        }
     }
 
     fun clearSelection() {
 
-    if (selectedUris.isEmpty()) {
-        return
+        if (selectedUris.isEmpty()) {
+            return
+        }
+
+        selectedUris.clear()
+
+        onSelectionChanged(0)
+
+        notifyDataSetChanged()
     }
-
-    selectedUris.clear()
-
-    onSelectionChanged(0)
-
-    notifyDataSetChanged()
-}
 
     fun selectItem(item: MediaItem) {
 
-        selectedUris.add(item.uri.toString())
+        val uri = item.uri.toString()
 
-        notifyItemChanged(
-            currentList.indexOfFirst {
-                it.uri == item.uri
+        if (uri !in selectedUris) {
+
+            selectedUris.add(uri)
+
+            onSelectionChanged(selectedUris.size)
+
+            val position =
+                currentList.indexOfFirst {
+                    it.uri == item.uri
+                }
+
+            if (position != -1) {
+
+                notifyItemChanged(position)
             }
-        )
+        }
     }
 
     override fun onCreateViewHolder(
@@ -225,15 +260,24 @@ class MediaGridAdapter(
         holder: Holder,
         position: Int
     ) {
-        holder.bind(getItem(position))
+
+        holder.bind(
+            getItem(position)
+        )
     }
 
-    override fun onViewRecycled(holder: Holder) {
+    override fun onViewRecycled(
+        holder: Holder
+    ) {
+
         holder.clear()
+
         super.onViewRecycled(holder)
     }
 
-    private fun formatDuration(ms: Long): String {
+    private fun formatDuration(
+        ms: Long
+    ): String {
 
         val totalSeconds = ms / 1000
 
