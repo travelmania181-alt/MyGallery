@@ -11,6 +11,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.mygallery.databinding.ActivityAlbumBinding
 import kotlinx.coroutines.launch
+import androidx.activity.OnBackPressedCallback
 
 class AlbumActivity : AppCompatActivity() {
 
@@ -182,6 +183,24 @@ class AlbumActivity : AppCompatActivity() {
             )
 
         binding.recycler.adapter = adapter
+        onBackPressedDispatcher.addCallback(
+    this,
+    object : OnBackPressedCallback(true) {
+
+        override fun handleOnBackPressed() {
+
+            if (adapter.isSelectionMode) {
+
+                adapter.clearSelection()
+
+            } else {
+
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+            }
+        }
+    }
+)
 
         val id =
             intent.getStringExtra(EXTRA_ID)
