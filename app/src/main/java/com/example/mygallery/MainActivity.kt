@@ -71,37 +71,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         setSupportActionBar(binding.toolbar)
-        binding.toolbar.setOnMenuItemClickListener { item ->
-
-    when (item.itemId) {
-
-        R.id.search -> {
-
-            SearchDialog.show(
-                this,
-                vm.images.value.orEmpty() +
-                    vm.videos.value.orEmpty(),
-                ::openMedia
-            )
-
-            true
-        }
-
-        R.id.sort -> {
-
-            if (
-                currentTab == R.id.photos ||
-                currentTab == R.id.videos
-            ) {
-                showSortDialog()
-            }
-
-            true
-        }
-
-        else -> false
-    }
-        }
 
         ViewCompat.setOnApplyWindowInsetsListener(
             binding.root
@@ -192,19 +161,16 @@ class MainActivity : AppCompatActivity() {
             when (item.itemId) {
 
                 R.id.action_share_selected -> {
-
                     shareSelectedMedia()
                     true
                 }
 
                 R.id.action_favorite_selected -> {
-
                     toggleSelectedFavorites()
                     true
                 }
 
                 R.id.action_delete_selected -> {
-
                     deleteSelectedMedia()
                     true
                 }
@@ -218,26 +184,29 @@ class MainActivity : AppCompatActivity() {
 
         binding.recycler.itemAnimator = null
 
-        photoLayoutManager = GridLayoutManager(
-            this,
-            calculateColumns()
-        )
+        photoLayoutManager =
+            GridLayoutManager(
+                this,
+                calculateColumns()
+            )
 
-        videoLayoutManager = GridLayoutManager(
-            this,
-            calculateColumns()
-        )
+        videoLayoutManager =
+            GridLayoutManager(
+                this,
+                calculateColumns()
+            )
 
-        albumLayoutManager = GridLayoutManager(
-            this,
-            if (
-                resources.configuration.smallestScreenWidthDp >= 600
-            ) {
-                3
-            } else {
-                2
-            }
-        )
+        albumLayoutManager =
+            GridLayoutManager(
+                this,
+                if (
+                    resources.configuration.smallestScreenWidthDp >= 600
+                ) {
+                    3
+                } else {
+                    2
+                }
+            )
     }
 
     private fun setupBottomNavigation() {
@@ -367,26 +336,20 @@ class MainActivity : AppCompatActivity() {
 
         when (currentTab) {
 
-            R.id.photos -> {
-
+            R.id.photos ->
                 submitPhotos(
                     vm.images.value.orEmpty()
                 )
-            }
 
-            R.id.videos -> {
-
+            R.id.videos ->
                 submitVideos(
                     vm.videos.value.orEmpty()
                 )
-            }
 
-            R.id.albums -> {
-
+            R.id.albums ->
                 submitAlbums(
                     vm.albums.value.orEmpty()
                 )
-            }
         }
     }
 
@@ -394,20 +357,9 @@ class MainActivity : AppCompatActivity() {
         items: List<MediaItem>
     ) {
 
-        if (
-            binding.recycler.adapter !== photoAdapter
-        ) {
-            binding.recycler.adapter =
-                photoAdapter
-        }
-
-        if (
-            binding.recycler.layoutManager !==
+        binding.recycler.adapter = photoAdapter
+        binding.recycler.layoutManager =
             photoLayoutManager
-        ) {
-            binding.recycler.layoutManager =
-                photoLayoutManager
-        }
 
         val photos =
             items.filter {
@@ -435,20 +387,9 @@ class MainActivity : AppCompatActivity() {
         items: List<MediaItem>
     ) {
 
-        if (
-            binding.recycler.adapter !== videoAdapter
-        ) {
-            binding.recycler.adapter =
-                videoAdapter
-        }
-
-        if (
-            binding.recycler.layoutManager !==
+        binding.recycler.adapter = videoAdapter
+        binding.recycler.layoutManager =
             videoLayoutManager
-        ) {
-            binding.recycler.layoutManager =
-                videoLayoutManager
-        }
 
         val videos =
             items.filter {
@@ -476,20 +417,9 @@ class MainActivity : AppCompatActivity() {
         items: List<Album>
     ) {
 
-        if (
-            binding.recycler.adapter !== albumAdapter
-        ) {
-            binding.recycler.adapter =
-                albumAdapter
-        }
-
-        if (
-            binding.recycler.layoutManager !==
+        binding.recycler.adapter = albumAdapter
+        binding.recycler.layoutManager =
             albumLayoutManager
-        ) {
-            binding.recycler.layoutManager =
-                albumLayoutManager
-        }
 
         albumAdapter.submitList(
             ArrayList(items)
@@ -507,14 +437,11 @@ class MainActivity : AppCompatActivity() {
 
         return when (currentTab) {
 
-            R.id.photos ->
-                photoAdapter
+            R.id.photos -> photoAdapter
 
-            R.id.videos ->
-                videoAdapter
+            R.id.videos -> videoAdapter
 
-            else ->
-                null
+            else -> null
         }
     }
 
@@ -535,8 +462,8 @@ class MainActivity : AppCompatActivity() {
             count > 0 &&
             (
                 currentTab == R.id.photos ||
-                currentTab == R.id.videos
-            )
+                    currentTab == R.id.videos
+                )
         ) {
 
             binding.toolbar.visibility =
@@ -615,7 +542,8 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val uris = ArrayList<Uri>()
+        val uris =
+            ArrayList<Uri>()
 
         selectedItems.forEach { item ->
             uris.add(item.uri)
@@ -624,7 +552,9 @@ class MainActivity : AppCompatActivity() {
         val shareIntent =
             if (uris.size == 1) {
 
-                Intent(Intent.ACTION_SEND).apply {
+                Intent(
+                    Intent.ACTION_SEND
+                ).apply {
 
                     type =
                         selectedItems.first()
@@ -689,14 +619,12 @@ class MainActivity : AppCompatActivity() {
             if (allFavorites) {
 
                 if (item.isFavorite) {
-
                     vm.toggleFavorite(item) {}
                 }
 
             } else {
 
                 if (!item.isFavorite) {
-
                     vm.toggleFavorite(item) {}
                 }
             }
@@ -793,6 +721,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // -------------------------
+    // SORT
+    // -------------------------
+
     private fun showSortDialog() {
 
         val options = arrayOf(
@@ -803,10 +735,16 @@ class MainActivity : AppCompatActivity() {
         )
 
         val currentSortMode =
-            if (currentTab == R.id.photos) {
-                photoSortMode
-            } else {
-                videoSortMode
+            when (currentTab) {
+
+                R.id.photos ->
+                    photoSortMode
+
+                R.id.videos ->
+                    videoSortMode
+
+                else ->
+                    return
             }
 
         val selected =
@@ -825,23 +763,18 @@ class MainActivity : AppCompatActivity() {
                 selected
             ) { dialog, which ->
 
-                val newSortMode =
-                    when (which) {
-
-                        0 -> SortMode.NEWEST
-                        1 -> SortMode.OLDEST
-                        2 -> SortMode.NAME_ASC
-                        else -> SortMode.NAME_DESC
-                    }
-
-                dialog.dismiss()
-
                 when (currentTab) {
 
                     R.id.photos -> {
 
                         photoSortMode =
-                            newSortMode
+                            when (which) {
+
+                                0 -> SortMode.NEWEST
+                                1 -> SortMode.OLDEST
+                                2 -> SortMode.NAME_ASC
+                                else -> SortMode.NAME_DESC
+                            }
 
                         submitPhotos(
                             vm.images.value.orEmpty()
@@ -851,13 +784,21 @@ class MainActivity : AppCompatActivity() {
                     R.id.videos -> {
 
                         videoSortMode =
-                            newSortMode
+                            when (which) {
+
+                                0 -> SortMode.NEWEST
+                                1 -> SortMode.OLDEST
+                                2 -> SortMode.NAME_ASC
+                                else -> SortMode.NAME_DESC
+                            }
 
                         submitVideos(
                             vm.videos.value.orEmpty()
                         )
                     }
                 }
+
+                dialog.dismiss()
             }
             .show()
     }
@@ -870,21 +811,25 @@ class MainActivity : AppCompatActivity() {
         return when (sortMode) {
 
             SortMode.NEWEST ->
+
                 items.sortedByDescending {
                     it.dateAddedSeconds
                 }
 
             SortMode.OLDEST ->
+
                 items.sortedBy {
                     it.dateAddedSeconds
                 }
 
             SortMode.NAME_ASC ->
+
                 items.sortedBy {
                     it.name.lowercase()
                 }
 
             SortMode.NAME_DESC ->
+
                 items.sortedByDescending {
                     it.name.lowercase()
                 }
@@ -1004,10 +949,11 @@ class MainActivity : AppCompatActivity() {
                 return
             }
 
-            val intent = Intent(
-                this,
-                ImageViewerActivity::class.java
-            )
+            val intent =
+                Intent(
+                    this,
+                    ImageViewerActivity::class.java
+                )
 
             intent.putStringArrayListExtra(
                 ImageViewerActivity.EXTRA_IMAGES,
@@ -1048,10 +994,11 @@ class MainActivity : AppCompatActivity() {
                 return
             }
 
-            val intent = Intent(
-                this,
-                VideoPlayerActivity::class.java
-            )
+            val intent =
+                Intent(
+                    this,
+                    VideoPlayerActivity::class.java
+                )
 
             intent.putStringArrayListExtra(
                 VideoPlayerActivity.EXTRA_VIDEOS,
@@ -1065,35 +1012,6 @@ class MainActivity : AppCompatActivity() {
 
             startActivity(intent)
         }
-    }
-
-    private fun share(
-        item: MediaItem
-    ) {
-
-        startActivity(
-            Intent.createChooser(
-                Intent(
-                    Intent.ACTION_SEND
-                ).apply {
-
-                    type =
-                        item.mimeType.ifBlank {
-                            "*/*"
-                        }
-
-                    putExtra(
-                        Intent.EXTRA_STREAM,
-                        item.uri
-                    )
-
-                    addFlags(
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
-                },
-                getString(R.string.share)
-            )
-        )
     }
 
     private fun delete(
@@ -1168,10 +1086,8 @@ class MainActivity : AppCompatActivity() {
         )
 
         if (
-            requestCode ==
-            DELETE_SINGLE_REQUEST ||
-            requestCode ==
-            DELETE_MULTIPLE_REQUEST
+            requestCode == DELETE_SINGLE_REQUEST ||
+            requestCode == DELETE_MULTIPLE_REQUEST
         ) {
 
             vm.refresh()
@@ -1190,5 +1106,38 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    
+    override fun onOptionsItemSelected(
+        item: MenuItem
+    ): Boolean {
+
+        when (item.itemId) {
+
+            R.id.search -> {
+
+                SearchDialog.show(
+                    this,
+                    vm.images.value.orEmpty() +
+                        vm.videos.value.orEmpty(),
+                    ::openMedia
+                )
+
+                return true
+            }
+
+            R.id.sort -> {
+
+                if (
+                    currentTab == R.id.photos ||
+                    currentTab == R.id.videos
+                ) {
+
+                    showSortDialog()
+                }
+
+                return true
+            }
+        }
+
+        return super.onOptionsItemSelected(item)
+    }
 }
