@@ -4,8 +4,6 @@ import android.util.Size
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.example.mygallery.databinding.ItemMediaBinding
@@ -20,37 +18,22 @@ class MediaGridAdapter(
     private val onClick: (MediaItem) -> Unit,
     private val onLongClick: (MediaItem) -> Unit,
     private val onSelectionChanged: (Int) -> Unit
-) : ListAdapter<MediaItem, MediaGridAdapter.Holder>(DIFF) {
+) : RecyclerView.Adapter<MediaGridAdapter.Holder>() {
+
+    private val items = mutableListOf<MediaItem>()
 
     private val selectedUris = mutableSetOf<String>()
 
+    val currentItems: List<MediaItem>
+        get() = items.toList()
+
     val selectedItems: List<MediaItem>
-        get() = currentList.filter {
+        get() = items.filter {
             it.uri.toString() in selectedUris
         }
 
     val isSelectionMode: Boolean
         get() = selectedUris.isNotEmpty()
-
-    companion object {
-
-        private val DIFF = object : DiffUtil.ItemCallback<MediaItem>() {
-
-            override fun areItemsTheSame(
-                oldItem: MediaItem,
-                newItem: MediaItem
-            ): Boolean {
-                return oldItem.uri == newItem.uri
-            }
-
-            override fun areContentsTheSame(
-                oldItem: MediaItem,
-                newItem: MediaItem
-            ): Boolean {
-                return oldItem == newItem
-            }
-        }
-    }
 
     inner class Holder(
         private val binding: ItemMediaBinding
@@ -62,34 +45,50 @@ class MediaGridAdapter(
 
             thumbnailJob?.cancel()
 
-            binding.thumbnail.tag = item.uri.toString()
+            binding.thumbnail.tag =
+                item.uri.toString()
+
             binding.thumbnail.setImageDrawable(null)
 
             if (item.type == MediaType.VIDEO) {
 
-                thumbnailJob = CoroutineScope(
-                    Dispatchers.Main
-                ).launch {
+                thumbnailJob =
+                    CoroutineScope(
+                        Dispatchers.Main
+                    ).launch {
 
-                    val bitmap = withContext(Dispatchers.IO) {
-                        try {
-                            binding.thumbnail.context.contentResolver.loadThumbnail(
-                                item.uri,
-                                Size(512, 512),
-                                null
-                            )
-                        } catch (e: Exception) {
-                            null
+                        val bitmap =
+                            withContext(Dispatchers.IO) {
+
+                                try {
+
+                                    binding.thumbnail
+                                        .context
+                                        .contentResolver
+                                        .loadThumbnail(
+                                            item.uri,
+                                            Size(512, 512),
+                                            null
+                                        )
+
+                                } catch (
+                                    e: Exception
+                                ) {
+
+                                    null
+                                }
+                            }
+
+                        if (
+                            binding.thumbnail.tag ==
+                            item.uri.toString() &&
+                            bitmap != null
+                        ) {
+
+                            binding.thumbnail
+                                .setImageBitmap(bitmap)
                         }
                     }
-
-                    if (
-                        binding.thumbnail.tag == item.uri.toString() &&
-                        bitmap != null
-                    ) {
-                        binding.thumbnail.setImageBitmap(bitmap)
-                    }
-                }
 
             } else {
 
@@ -113,6 +112,7 @@ class MediaGridAdapter(
                 }
 
             if (item.type == MediaType.VIDEO) {
+
                 binding.duration.text =
                     formatDuration(item.duration)
             }
@@ -124,20 +124,19 @@ class MediaGridAdapter(
                     View.GONE
                 }
 
-            // Selected visual state
-            val isSelected =
+            val selected =
                 item.uri.toString() in selectedUris
 
-            binding.root.isSelected = isSelected
+            binding.root.isSelected =
+                selected
 
             binding.root.alpha =
-                if (isSelected) {
+                if (selected) {
                     0.65f
                 } else {
                     1f
                 }
 
-            // Normal click or multi-selection click
             binding.root.setOnClickListener {
 
                 if (isSelectionMode) {
@@ -150,19 +149,11 @@ class MediaGridAdapter(
                 }
             }
 
-            // Long press starts multi-selection
             binding.root.setOnLongClickListener {
 
-                if (!isSelectionMode) {
+                toggleSelection(item)
 
-                    toggleSelection(item)
-
-                } else {
-
-                    // If already in selection mode,
-                    // long press also toggles this item
-                    toggleSelection(item)
-                }
+                onLongClick(item)
 
                 true
             }
@@ -181,9 +172,78 @@ class MediaGridAdapter(
         }
     }
 
-    fun toggleSelection(item: MediaItem) {
+    override fun onCreateViewHolder(
+        parent: ViewGroup,
+        viewType: Int
+    ): Holder {
 
-        val uri = item.uri.toString()
+        val binding =
+            ItemMediaBinding.inflate(
+                LayoutInflater.from(parent.context),
+                parent,
+                false
+            )
+
+        return Holder(binding)
+    }
+
+    override fun onBindViewHolder(
+        holder: Holder,
+        position: Int
+    ) {
+
+        holder.bind(items[position])
+    }
+
+    override fun getItemCount(): Int {
+        return items.size
+    }
+
+    override fun onViewRecycled(
+        holder: Holder
+    ) {
+
+        holder.clear()
+
+        super.onViewRecycled(holder)
+    }
+
+    /*
+     * Main method used by MainActivity.
+     *
+     * The list is replaced immediately and RecyclerView
+     * is explicitly told to redraw in the new order.
+     */
+    fun replaceItemsImmediately(
+        newItems: List<MediaItem>
+    ) {
+
+        selectedUris.retainAll { selectedUri ->
+
+            newItems.any {
+                it.uri.toString() == selectedUri
+            }
+        }
+
+        items.clear()
+        items.addAll(newItems)
+
+        notifyDataSetChanged()
+    }
+
+    fun submitList(
+        newItems: List<MediaItem>
+    ) {
+
+        replaceItemsImmediately(newItems)
+    }
+
+    fun toggleSelection(
+        item: MediaItem
+    ) {
+
+        val uri =
+            item.uri.toString()
 
         if (uri in selectedUris) {
 
@@ -194,14 +254,16 @@ class MediaGridAdapter(
             selectedUris.add(uri)
         }
 
-        onSelectionChanged(selectedUris.size)
+        onSelectionChanged(
+            selectedUris.size
+        )
 
         val position =
-            currentList.indexOfFirst {
+            items.indexOfFirst {
                 it.uri == item.uri
             }
 
-        if (position != -1) {
+        if (position >= 0) {
 
             notifyItemChanged(position)
         }
@@ -220,68 +282,43 @@ class MediaGridAdapter(
         notifyDataSetChanged()
     }
 
-    fun selectItem(item: MediaItem) {
+    fun selectItem(
+        item: MediaItem
+    ) {
 
-        val uri = item.uri.toString()
+        val uri =
+            item.uri.toString()
 
         if (uri !in selectedUris) {
 
             selectedUris.add(uri)
 
-            onSelectionChanged(selectedUris.size)
+            onSelectionChanged(
+                selectedUris.size
+            )
 
             val position =
-                currentList.indexOfFirst {
+                items.indexOfFirst {
                     it.uri == item.uri
                 }
 
-            if (position != -1) {
+            if (position >= 0) {
 
                 notifyItemChanged(position)
             }
         }
     }
 
-    override fun onCreateViewHolder(
-        parent: ViewGroup,
-        viewType: Int
-    ): Holder {
-
-        val binding = ItemMediaBinding.inflate(
-            LayoutInflater.from(parent.context),
-            parent,
-            false
-        )
-
-        return Holder(binding)
-    }
-
-    override fun onBindViewHolder(
-        holder: Holder,
-        position: Int
-    ) {
-
-        holder.bind(
-            getItem(position)
-        )
-    }
-
-    override fun onViewRecycled(
-        holder: Holder
-    ) {
-
-        holder.clear()
-
-        super.onViewRecycled(holder)
-    }
-
     private fun formatDuration(
         ms: Long
     ): String {
 
-        val totalSeconds = ms / 1000
+        val totalSeconds =
+            ms / 1000
 
-        return if (totalSeconds >= 3600) {
+        return if (
+            totalSeconds >= 3600
+        ) {
 
             String.format(
                 Locale.US,
