@@ -425,10 +425,12 @@ class MainActivity : AppCompatActivity() {
                 photoSortMode
             )
 
-        photoAdapter.submitList(
-            ArrayList(sortedPhotos)
-        )
-
+        photoAdapter.replaceItemsImmediately(
+    sortMedia(
+        photos,
+        photoSortMode
+    )
+)
         binding.emptyGroup.visibility =
             if (photos.isEmpty()) {
                 View.VISIBLE
@@ -462,9 +464,12 @@ class MainActivity : AppCompatActivity() {
                 videoSortMode
             )
 
-        videoAdapter.submitList(
-            ArrayList(sortedVideos)
-        )
+        videoAdapter.replaceItemsImmediately(
+    sortMedia(
+        videos,
+        videoSortMode
+    )
+)
 
         binding.emptyGroup.visibility =
             if (videos.isEmpty()) {
