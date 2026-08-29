@@ -28,11 +28,12 @@
 
             <!-- Normal toolbar -->
             <com.google.android.material.appbar.MaterialToolbar
-                android:id="@+id/toolbar"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="?attr/colorSurface"
-                app:title="@string/app_name" />
+    android:id="@+id/toolbar"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface"
+    app:title="@string/app_name"
+    app:menu="@menu/main_menu" />
 
             <!-- Multi-selection toolbar -->
             <com.google.android.material.appbar.MaterialToolbar
