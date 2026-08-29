@@ -8,6 +8,8 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.provider.Settings
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
@@ -68,6 +70,8 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Standard Android/AppCompat toolbar.
+        // This keeps Search and Sort inside the 3-dot overflow menu.
         setSupportActionBar(binding.toolbar)
 
         ViewCompat.setOnApplyWindowInsetsListener(
@@ -89,7 +93,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupAdapters()
-        setupToolbar()
         setupSelectionToolbar()
         setupRecycler()
         setupBottomNavigation()
@@ -150,40 +153,6 @@ class MainActivity : AppCompatActivity() {
             )
         }
     }
-
-    // =========================================================
-    // NORMAL TOOLBAR
-    // =========================================================
-
-    private fun setupToolbar() {
-
-    binding.toolbar.setOnMenuItemClickListener { item ->
-
-        when (item.itemId) {
-
-            R.id.search -> {
-
-                SearchDialog.show(
-                    this,
-                    vm.images.value.orEmpty() +
-                        vm.videos.value.orEmpty(),
-                    ::openMedia
-                )
-
-                true
-            }
-
-            R.id.sort -> {
-
-                showSortDialog()
-
-                true
-            }
-
-            else -> false
-        }
-    }
-}
 
     // =========================================================
     // SELECTION TOOLBAR
@@ -278,7 +247,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // =========================================================
-    // PERMISSION
+    // PERMISSION BUTTONS
     // =========================================================
 
     private fun setupPermissionButtons() {
@@ -303,7 +272,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // =========================================================
-    // REFRESH
+    // SWIPE REFRESH
     // =========================================================
 
     private fun setupSwipeRefresh() {
@@ -532,7 +501,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // =========================================================
-    // CURRENT ADAPTER
+    // CURRENT MEDIA ADAPTER
     // =========================================================
 
     private fun getCurrentMediaAdapter(): MediaGridAdapter? {
@@ -551,7 +520,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // =========================================================
-    // SELECTION
+    // CLEAR SELECTION
     // =========================================================
 
     private fun clearAllSelections() {
@@ -564,6 +533,10 @@ class MainActivity : AppCompatActivity() {
             videoAdapter.clearSelection()
         }
     }
+
+    // =========================================================
+    // SELECTION UI
+    // =========================================================
 
     private fun updateSelectionUi(
         count: Int
@@ -873,10 +846,17 @@ class MainActivity : AppCompatActivity() {
         val selected =
             when (currentSortMode) {
 
-                SortMode.NEWEST -> 0
-                SortMode.OLDEST -> 1
-                SortMode.NAME_ASC -> 2
-                SortMode.NAME_DESC -> 3
+                SortMode.NEWEST ->
+                    0
+
+                SortMode.OLDEST ->
+                    1
+
+                SortMode.NAME_ASC ->
+                    2
+
+                SortMode.NAME_DESC ->
+                    3
             }
 
         AlertDialog.Builder(this)
@@ -940,38 +920,30 @@ class MainActivity : AppCompatActivity() {
 
         return when (sortMode) {
 
-            SortMode.NEWEST -> {
-
+            SortMode.NEWEST ->
                 items.sortedByDescending {
                     it.dateAddedSeconds
                 }
-            }
 
-            SortMode.OLDEST -> {
-
+            SortMode.OLDEST ->
                 items.sortedBy {
                     it.dateAddedSeconds
                 }
-            }
 
-            SortMode.NAME_ASC -> {
-
+            SortMode.NAME_ASC ->
                 items.sortedBy {
                     it.name.lowercase()
                 }
-            }
 
-            SortMode.NAME_DESC -> {
-
+            SortMode.NAME_DESC ->
                 items.sortedByDescending {
                     it.name.lowercase()
                 }
-            }
         }
     }
 
     // =========================================================
-    // COLUMNS
+    // GRID COLUMNS
     // =========================================================
 
     private fun calculateColumns(): Int {
@@ -997,7 +969,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // =========================================================
-    // PERMISSIONS
+    // PERMISSION
     // =========================================================
 
     private fun hasMediaPermission(): Boolean {
@@ -1355,7 +1327,50 @@ class MainActivity : AppCompatActivity() {
     }
 
     // =========================================================
-    // MENU
+    // STANDARD TOOLBAR MENU
     // =========================================================
 
+    override fun onCreateOptionsMenu(
+        menu: Menu
+    ): Boolean {
+
+        menuInflater.inflate(
+            R.menu.main_menu,
+            menu
+        )
+
+        return true
+    }
+
+    override fun onOptionsItemSelected(
+        item: MenuItem
+    ): Boolean {
+
+        return when (item.itemId) {
+
+            R.id.search -> {
+
+                SearchDialog.show(
+                    this,
+                    vm.images.value.orEmpty() +
+                        vm.videos.value.orEmpty(),
+                    ::openMedia
+                )
+
+                true
+            }
+
+            R.id.sort -> {
+
+                showSortDialog()
+
+                true
+            }
+
+            else -> {
+
+                super.onOptionsItemSelected(item)
+            }
+        }
+    }
 }
