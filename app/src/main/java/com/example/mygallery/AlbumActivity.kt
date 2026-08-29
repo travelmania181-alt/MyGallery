@@ -3,6 +3,7 @@ package com.example.mygallery
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -11,11 +12,11 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.mygallery.databinding.ActivityAlbumBinding
 import kotlinx.coroutines.launch
-import androidx.activity.OnBackPressedCallback
 
 class AlbumActivity : AppCompatActivity() {
 
     companion object {
+
         const val EXTRA_ID = "album_id"
         const val EXTRA_NAME = "album_name"
 
@@ -25,7 +26,7 @@ class AlbumActivity : AppCompatActivity() {
     private lateinit var binding: ActivityAlbumBinding
     private lateinit var adapter: MediaGridAdapter
 
-    private var albumTitle = ""
+    private var albumTitle: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,23 +36,45 @@ class AlbumActivity : AppCompatActivity() {
         binding = ActivityAlbumBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        setupInsets()
+        setupToolbar()
+        setupAdapter()
+        setupRecycler()
+        setupBackButton()
+        loadAlbum()
+    }
+
+    // ---------------------------------------------------------
+    // WINDOW INSETS
+    // ---------------------------------------------------------
+
+    private fun setupInsets() {
+
         ViewCompat.setOnApplyWindowInsetsListener(
             binding.root
-        ) { v, insets ->
+        ) { view, insets ->
 
-            val bars = insets.getInsets(
-                WindowInsetsCompat.Type.systemBars()
-            )
+            val systemBars =
+                insets.getInsets(
+                    WindowInsetsCompat.Type.systemBars()
+                )
 
-            v.setPadding(
-                bars.left,
-                bars.top,
-                bars.right,
-                bars.bottom
+            view.setPadding(
+                systemBars.left,
+                systemBars.top,
+                systemBars.right,
+                systemBars.bottom
             )
 
             insets
         }
+    }
+
+    // ---------------------------------------------------------
+    // TOOLBAR
+    // ---------------------------------------------------------
+
+    private fun setupToolbar() {
 
         albumTitle =
             intent.getStringExtra(EXTRA_NAME)
@@ -70,91 +93,26 @@ class AlbumActivity : AppCompatActivity() {
                 finish()
             }
         }
+    }
+
+    // ---------------------------------------------------------
+    // ADAPTER
+    // ---------------------------------------------------------
+
+    private fun setupAdapter() {
 
         adapter = MediaGridAdapter(
 
-            onClick = { item ->
+            onClick = { item: MediaItem ->
 
-                if (item.type == MediaType.IMAGE) {
-
-                    // Get all images currently shown in this album
-                    val imageItems =
-                        adapter.currentList.filter {
-                            it.type == MediaType.IMAGE
-                        }
-
-                    val imageUris = ArrayList(
-                        imageItems.map {
-                            it.uri.toString()
-                        }
-                    )
-
-                    val position =
-                        imageItems.indexOfFirst {
-                            it.uri == item.uri
-                        }
-
-                    val imageIntent = Intent(
-                        this,
-                        ImageViewerActivity::class.java
-                    )
-
-                    imageIntent.putStringArrayListExtra(
-                        ImageViewerActivity.EXTRA_IMAGES,
-                        imageUris
-                    )
-
-                    imageIntent.putExtra(
-                        ImageViewerActivity.EXTRA_POSITION,
-                        position
-                    )
-
-                    startActivity(imageIntent)
-
-                } else {
-
-                    // Get all videos currently shown in this album
-                    val videoItems =
-                        adapter.currentList.filter {
-                            it.type == MediaType.VIDEO
-                        }
-
-                    val videoUris = ArrayList(
-                        videoItems.map {
-                            it.uri.toString()
-                        }
-                    )
-
-                    val position =
-                        videoItems.indexOfFirst {
-                            it.uri == item.uri
-                        }
-
-                    val videoIntent = Intent(
-                        this,
-                        VideoPlayerActivity::class.java
-                    )
-
-                    videoIntent.putStringArrayListExtra(
-                        VideoPlayerActivity.EXTRA_VIDEOS,
-                        videoUris
-                    )
-
-                    videoIntent.putExtra(
-                        VideoPlayerActivity.EXTRA_POSITION,
-                        position
-                    )
-
-                    startActivity(videoIntent)
-                }
+                openMedia(item)
             },
 
-            // Long press is handled by MediaGridAdapter
-            // to start multi-selection.
-            onLongClick = { },
+            onLongClick = { _: MediaItem ->
+                // Selection is handled inside MediaGridAdapter.
+            },
 
-            // Update the toolbar when selection changes
-            onSelectionChanged = { count ->
+            onSelectionChanged = { count: Int ->
 
                 if (count > 0) {
 
@@ -168,66 +126,103 @@ class AlbumActivity : AppCompatActivity() {
                 }
             }
         )
+    }
+
+    // ---------------------------------------------------------
+    // RECYCLER VIEW
+    // ---------------------------------------------------------
+
+    private fun setupRecycler() {
+
+        val columns =
+            if (
+                resources.configuration
+                    .smallestScreenWidthDp >= 600
+            ) {
+                5
+            } else {
+                3
+            }
 
         binding.recycler.layoutManager =
             GridLayoutManager(
                 this,
-                if (
-                    resources.configuration
-                        .smallestScreenWidthDp >= 600
-                ) {
-                    5
-                } else {
-                    3
-                }
+                columns
             )
 
         binding.recycler.adapter = adapter
-        onBackPressedDispatcher.addCallback(
-    this,
-    object : OnBackPressedCallback(true) {
 
-        override fun handleOnBackPressed() {
-
-            if (adapter.isSelectionMode) {
-
-                adapter.clearSelection()
-
-            } else {
-
-                isEnabled = false
-                onBackPressedDispatcher.onBackPressed()
-            }
-        }
+        binding.recycler.itemAnimator = null
     }
-)
 
-        val id =
+    // ---------------------------------------------------------
+    // BACK BUTTON
+    // ---------------------------------------------------------
+
+    private fun setupBackButton() {
+
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+
+                override fun handleOnBackPressed() {
+
+                    if (adapter.isSelectionMode) {
+
+                        adapter.clearSelection()
+
+                    } else {
+
+                        isEnabled = false
+
+                        onBackPressedDispatcher
+                            .onBackPressed()
+                    }
+                }
+            }
+        )
+    }
+
+    // ---------------------------------------------------------
+    // LOAD ALBUM
+    // ---------------------------------------------------------
+
+    private fun loadAlbum() {
+
+        val albumId =
             intent.getStringExtra(EXTRA_ID)
 
         lifecycleScope.launch {
 
-            val repo =
-                MediaRepository(this@AlbumActivity)
+            val repository =
+                MediaRepository(
+                    this@AlbumActivity
+                )
 
-            val items =
-                if (id == FAVORITES_ALBUM_ID) {
+            val albumItems: List<MediaItem> =
 
-                    val allMedia =
-                        repo.images() + repo.videos()
+                if (
+                    albumId ==
+                    FAVORITES_ALBUM_ID
+                ) {
 
-                    allMedia.filter {
-                        it.isFavorite
+                    val allMedia: List<MediaItem> =
+                        repository.images() +
+                            repository.videos()
+
+                    allMedia.filter { media ->
+                        media.isFavorite
                     }
 
                 } else {
 
-                    repo.images(id) + repo.videos(id)
+                    repository.images(albumId) +
+                        repository.videos(albumId)
                 }
 
-            val sortedItems =
-                items.sortedByDescending {
-                    it.dateAddedSeconds
+            val sortedItems: List<MediaItem> =
+                albumItems.sortedByDescending { media ->
+                    media.dateAddedSeconds
                 }
 
             adapter.submitList(
@@ -243,18 +238,95 @@ class AlbumActivity : AppCompatActivity() {
         }
     }
 
-    override fun onBackPressed() {
+    // ---------------------------------------------------------
+    // OPEN MEDIA
+    // ---------------------------------------------------------
 
-        if (
-            ::adapter.isInitialized &&
-            adapter.isSelectionMode
-        ) {
+    private fun openMedia(
+        item: MediaItem
+    ) {
 
-            adapter.clearSelection()
+        if (item.type == MediaType.IMAGE) {
+
+            val imageItems: List<MediaItem> =
+                adapter.currentList.filter { media ->
+                    media.type == MediaType.IMAGE
+                }
+
+            val imageUris =
+                ArrayList(
+                    imageItems.map { media ->
+                        media.uri.toString()
+                    }
+                )
+
+            val position =
+                imageItems.indexOfFirst { media ->
+                    media.uri == item.uri
+                }
+
+            if (position < 0) {
+                return
+            }
+
+            val intent =
+                Intent(
+                    this,
+                    ImageViewerActivity::class.java
+                )
+
+            intent.putStringArrayListExtra(
+                ImageViewerActivity.EXTRA_IMAGES,
+                imageUris
+            )
+
+            intent.putExtra(
+                ImageViewerActivity.EXTRA_POSITION,
+                position
+            )
+
+            startActivity(intent)
 
         } else {
 
-            super.onBackPressed()
+            val videoItems: List<MediaItem> =
+                adapter.currentList.filter { media ->
+                    media.type == MediaType.VIDEO
+                }
+
+            val videoUris =
+                ArrayList(
+                    videoItems.map { media ->
+                        media.uri.toString()
+                    }
+                )
+
+            val position =
+                videoItems.indexOfFirst { media ->
+                    media.uri == item.uri
+                }
+
+            if (position < 0) {
+                return
+            }
+
+            val intent =
+                Intent(
+                    this,
+                    VideoPlayerActivity::class.java
+                )
+
+            intent.putStringArrayListExtra(
+                VideoPlayerActivity.EXTRA_VIDEOS,
+                videoUris
+            )
+
+            intent.putExtra(
+                VideoPlayerActivity.EXTRA_POSITION,
+                position
+            )
+
+            startActivity(intent)
         }
     }
 }
