@@ -822,96 +822,96 @@ class MainActivity : AppCompatActivity() {
 
     private fun showSortDialog() {
 
-        val options =
-            arrayOf(
-                "Newest first",
-                "Oldest first",
-                "Name A–Z",
-                "Name Z–A"
-            )
+    if (
+        currentTab != R.id.photos &&
+        currentTab != R.id.videos
+    ) {
+        return
+    }
 
-        val currentSortMode =
-            when (currentTab) {
+    val options = arrayOf(
+        "Newest first",
+        "Oldest first",
+        "Name A–Z",
+        "Name Z–A"
+    )
 
-                R.id.photos ->
-                    photoSortMode
+    val currentMode =
+        if (currentTab == R.id.photos) {
+            photoSortMode
+        } else {
+            videoSortMode
+        }
 
-                R.id.videos ->
-                    videoSortMode
+    val checkedItem =
+        when (currentMode) {
+            SortMode.NEWEST -> 0
+            SortMode.OLDEST -> 1
+            SortMode.NAME_ASC -> 2
+            SortMode.NAME_DESC -> 3
+        }
 
-                else ->
-                    return
-            }
+    AlertDialog.Builder(this)
+        .setTitle("Sort by")
+        .setSingleChoiceItems(
+            options,
+            checkedItem
+        ) { dialog, which ->
 
-        val selected =
-            when (currentSortMode) {
-
-                SortMode.NEWEST ->
-                    0
-
-                SortMode.OLDEST ->
-                    1
-
-                SortMode.NAME_ASC ->
-                    2
-
-                SortMode.NAME_DESC ->
-                    3
-            }
-
-        AlertDialog.Builder(this)
-            .setTitle("Sort by")
-            .setSingleChoiceItems(
-                options,
-                selected
-            ) { dialog, which ->
-
-                val newSortMode =
-                    when (which) {
-
-                        0 ->
-                            SortMode.NEWEST
-
-                        1 ->
-                            SortMode.OLDEST
-
-                        2 ->
-                            SortMode.NAME_ASC
-
-                        3 ->
-                            SortMode.NAME_DESC
-
-                        else ->
-                            SortMode.NEWEST
-                    }
-
-                when (currentTab) {
-
-                    R.id.photos -> {
-
-                        photoSortMode =
-                            newSortMode
-
-                        submitPhotos(
-                            vm.images.value.orEmpty()
-                        )
-                    }
-
-                    R.id.videos -> {
-
-                        videoSortMode =
-                            newSortMode
-
-                        submitVideos(
-                            vm.videos.value.orEmpty()
-                        )
-                    }
+            val newMode =
+                when (which) {
+                    0 -> SortMode.NEWEST
+                    1 -> SortMode.OLDEST
+                    2 -> SortMode.NAME_ASC
+                    3 -> SortMode.NAME_DESC
+                    else -> SortMode.NEWEST
                 }
 
-                dialog.dismiss()
+            if (currentTab == R.id.photos) {
+
+                photoSortMode = newMode
+
+                val source =
+                    vm.images.value.orEmpty()
+                        .filter {
+                            it.type == MediaType.IMAGE
+                        }
+
+                val sorted =
+                    sortMedia(
+                        source,
+                        newMode
+                    )
+
+                photoAdapter.replaceItemsImmediately(
+                    sorted
+                )
+
+            } else {
+
+                videoSortMode = newMode
+
+                val source =
+                    vm.videos.value.orEmpty()
+                        .filter {
+                            it.type == MediaType.VIDEO
+                        }
+
+                val sorted =
+                    sortMedia(
+                        source,
+                        newMode
+                    )
+
+                videoAdapter.replaceItemsImmediately(
+                    sorted
+                )
             }
-            .show()
-    }
+
+            dialog.dismiss()
+        }
+        .show()
+}
 
     private fun sortMedia(
         items: List<MediaItem>,
