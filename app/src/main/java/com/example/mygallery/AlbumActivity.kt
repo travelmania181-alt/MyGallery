@@ -26,6 +26,15 @@ class AlbumActivity : AppCompatActivity() {
     private lateinit var binding: ActivityAlbumBinding
     private lateinit var adapter: MediaGridAdapter
 
+    /*
+     * This is the actual list currently displayed
+     * in this album.
+     *
+     * We keep our own reference instead of using
+     * adapter.currentList.
+     */
+    private var albumItems: List<MediaItem> = emptyList()
+
     private var albumTitle: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,7 +42,9 @@ class AlbumActivity : AppCompatActivity() {
 
         enableEdgeToEdge()
 
-        binding = ActivityAlbumBinding.inflate(layoutInflater)
+        binding =
+            ActivityAlbumBinding.inflate(layoutInflater)
+
         setContentView(binding.root)
 
         setupInsets()
@@ -44,9 +55,9 @@ class AlbumActivity : AppCompatActivity() {
         loadAlbum()
     }
 
-    // ---------------------------------------------------------
+    // =========================================================
     // WINDOW INSETS
-    // ---------------------------------------------------------
+    // =========================================================
 
     private fun setupInsets() {
 
@@ -54,25 +65,25 @@ class AlbumActivity : AppCompatActivity() {
             binding.root
         ) { view, insets ->
 
-            val systemBars =
+            val bars =
                 insets.getInsets(
                     WindowInsetsCompat.Type.systemBars()
                 )
 
             view.setPadding(
-                systemBars.left,
-                systemBars.top,
-                systemBars.right,
-                systemBars.bottom
+                bars.left,
+                bars.top,
+                bars.right,
+                bars.bottom
             )
 
             insets
         }
     }
 
-    // ---------------------------------------------------------
+    // =========================================================
     // TOOLBAR
-    // ---------------------------------------------------------
+    // =========================================================
 
     private fun setupToolbar() {
 
@@ -80,7 +91,8 @@ class AlbumActivity : AppCompatActivity() {
             intent.getStringExtra(EXTRA_NAME)
                 ?: getString(R.string.album)
 
-        binding.toolbar.title = albumTitle
+        binding.toolbar.title =
+            albumTitle
 
         binding.toolbar.setNavigationOnClickListener {
 
@@ -95,9 +107,9 @@ class AlbumActivity : AppCompatActivity() {
         }
     }
 
-    // ---------------------------------------------------------
+    // =========================================================
     // ADAPTER
-    // ---------------------------------------------------------
+    // =========================================================
 
     private fun setupAdapter() {
 
@@ -109,7 +121,9 @@ class AlbumActivity : AppCompatActivity() {
             },
 
             onLongClick = { _: MediaItem ->
-                // Selection is handled inside MediaGridAdapter.
+
+                // Selection is handled by
+                // MediaGridAdapter itself.
             },
 
             onSelectionChanged = { count: Int ->
@@ -128,9 +142,9 @@ class AlbumActivity : AppCompatActivity() {
         )
     }
 
-    // ---------------------------------------------------------
+    // =========================================================
     // RECYCLER VIEW
-    // ---------------------------------------------------------
+    // =========================================================
 
     private fun setupRecycler() {
 
@@ -150,14 +164,16 @@ class AlbumActivity : AppCompatActivity() {
                 columns
             )
 
-        binding.recycler.adapter = adapter
+        binding.recycler.adapter =
+            adapter
 
-        binding.recycler.itemAnimator = null
+        binding.recycler.itemAnimator =
+            null
     }
 
-    // ---------------------------------------------------------
+    // =========================================================
     // BACK BUTTON
-    // ---------------------------------------------------------
+    // =========================================================
 
     private fun setupBackButton() {
 
@@ -183,9 +199,9 @@ class AlbumActivity : AppCompatActivity() {
         )
     }
 
-    // ---------------------------------------------------------
+    // =========================================================
     // LOAD ALBUM
-    // ---------------------------------------------------------
+    // =========================================================
 
     private fun loadAlbum() {
 
@@ -199,38 +215,54 @@ class AlbumActivity : AppCompatActivity() {
                     this@AlbumActivity
                 )
 
-            val albumItems: List<MediaItem> =
+            val loadedItems: List<MediaItem>
 
-                if (
-                    albumId ==
-                    FAVORITES_ALBUM_ID
-                ) {
+            if (albumId == FAVORITES_ALBUM_ID) {
 
-                    val allMedia: List<MediaItem> =
-                        repository.images() +
-                            repository.videos()
+                val allImages: List<MediaItem> =
+                    repository.images()
 
-                    allMedia.filter { media ->
+                val allVideos: List<MediaItem> =
+                    repository.videos()
+
+                val allMedia: List<MediaItem> =
+                    allImages + allVideos
+
+                loadedItems =
+                    allMedia.filter { media: MediaItem ->
                         media.isFavorite
                     }
 
-                } else {
+            } else {
 
-                    repository.images(albumId) +
-                        repository.videos(albumId)
-                }
+                val albumImages: List<MediaItem> =
+                    repository.images(albumId)
 
-            val sortedItems: List<MediaItem> =
-                albumItems.sortedByDescending { media ->
+                val albumVideos: List<MediaItem> =
+                    repository.videos(albumId)
+
+                loadedItems =
+                    albumImages + albumVideos
+            }
+
+            /*
+             * Store the exact list displayed by the adapter.
+             */
+            albumItems =
+                loadedItems.sortedByDescending {
+                    media: MediaItem ->
                     media.dateAddedSeconds
                 }
 
+            /*
+             * Send the sorted list to the adapter.
+             */
             adapter.submitList(
-                ArrayList(sortedItems)
+                ArrayList(albumItems)
             )
 
             binding.emptyText.visibility =
-                if (sortedItems.isEmpty()) {
+                if (albumItems.isEmpty()) {
                     View.VISIBLE
                 } else {
                     View.GONE
@@ -238,9 +270,9 @@ class AlbumActivity : AppCompatActivity() {
         }
     }
 
-    // ---------------------------------------------------------
+    // =========================================================
     // OPEN MEDIA
-    // ---------------------------------------------------------
+    // =========================================================
 
     private fun openMedia(
         item: MediaItem
@@ -248,85 +280,124 @@ class AlbumActivity : AppCompatActivity() {
 
         if (item.type == MediaType.IMAGE) {
 
-            val imageItems: List<MediaItem> =
-                adapter.currentList.filter { media ->
-                    media.type == MediaType.IMAGE
-                }
-
-            val imageUris =
-                ArrayList(
-                    imageItems.map { media ->
-                        media.uri.toString()
-                    }
-                )
-
-            val position =
-                imageItems.indexOfFirst { media ->
-                    media.uri == item.uri
-                }
-
-            if (position < 0) {
-                return
-            }
-
-            val intent =
-                Intent(
-                    this,
-                    ImageViewerActivity::class.java
-                )
-
-            intent.putStringArrayListExtra(
-                ImageViewerActivity.EXTRA_IMAGES,
-                imageUris
-            )
-
-            intent.putExtra(
-                ImageViewerActivity.EXTRA_POSITION,
-                position
-            )
-
-            startActivity(intent)
+            openImage(item)
 
         } else {
 
-            val videoItems: List<MediaItem> =
-                adapter.currentList.filter { media ->
-                    media.type == MediaType.VIDEO
-                }
+            openVideo(item)
+        }
+    }
 
-            val videoUris =
-                ArrayList(
-                    videoItems.map { media ->
-                        media.uri.toString()
-                    }
-                )
+    // =========================================================
+    // OPEN IMAGE
+    // =========================================================
 
-            val position =
-                videoItems.indexOfFirst { media ->
-                    media.uri == item.uri
-                }
+    private fun openImage(
+        item: MediaItem
+    ) {
 
-            if (position < 0) {
-                return
+        /*
+         * Use our own albumItems list.
+         *
+         * No adapter.currentList is needed.
+         */
+        val imageItems: List<MediaItem> =
+            albumItems.filter { media: MediaItem ->
+
+                media.type == MediaType.IMAGE
             }
 
-            val intent =
-                Intent(
-                    this,
-                    VideoPlayerActivity::class.java
-                )
+        val imageUris =
+            ArrayList(
+                imageItems.map { media: MediaItem ->
 
-            intent.putStringArrayListExtra(
-                VideoPlayerActivity.EXTRA_VIDEOS,
-                videoUris
+                    media.uri.toString()
+                }
             )
 
-            intent.putExtra(
-                VideoPlayerActivity.EXTRA_POSITION,
-                position
-            )
+        val position =
+            imageItems.indexOfFirst {
+                media: MediaItem ->
 
-            startActivity(intent)
+                media.uri == item.uri
+            }
+
+        if (position < 0) {
+            return
         }
+
+        val intent =
+            Intent(
+                this,
+                ImageViewerActivity::class.java
+            )
+
+        intent.putStringArrayListExtra(
+            ImageViewerActivity.EXTRA_IMAGES,
+            imageUris
+        )
+
+        intent.putExtra(
+            ImageViewerActivity.EXTRA_POSITION,
+            position
+        )
+
+        startActivity(intent)
+    }
+
+    // =========================================================
+    // OPEN VIDEO
+    // =========================================================
+
+    private fun openVideo(
+        item: MediaItem
+    ) {
+
+        /*
+         * Again, use albumItems rather than
+         * adapter.currentList.
+         */
+        val videoItems: List<MediaItem> =
+            albumItems.filter { media: MediaItem ->
+
+                media.type == MediaType.VIDEO
+            }
+
+        val videoUris =
+            ArrayList(
+                videoItems.map { media: MediaItem ->
+
+                    media.uri.toString()
+                }
+            )
+
+        val position =
+            videoItems.indexOfFirst {
+                media: MediaItem ->
+
+                media.uri == item.uri
+            }
+
+        if (position < 0) {
+            return
+        }
+
+        val intent =
+            Intent(
+                this,
+                VideoPlayerActivity::class.java
+            )
+
+        intent.putStringArrayListExtra(
+            VideoPlayerActivity.EXTRA_VIDEOS,
+            videoUris
+        )
+
+        intent.putExtra(
+            VideoPlayerActivity.EXTRA_POSITION,
+            position
+        )
+
+        startActivity(intent)
     }
 }
