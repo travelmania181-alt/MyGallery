@@ -8,8 +8,6 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.provider.Settings
-import android.view.Menu
-import android.view.MenuItem
 import android.view.View
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
@@ -159,39 +157,33 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupToolbar() {
 
-        binding.toolbar.setOnMenuItemClickListener { item ->
+    binding.toolbar.setOnMenuItemClickListener { item ->
 
-            when (item.itemId) {
+        when (item.itemId) {
 
-                R.id.search -> {
+            R.id.search -> {
 
-                    SearchDialog.show(
-                        this,
-                        vm.images.value.orEmpty() +
-                            vm.videos.value.orEmpty(),
-                        ::openMedia
-                    )
+                SearchDialog.show(
+                    this,
+                    vm.images.value.orEmpty() +
+                        vm.videos.value.orEmpty(),
+                    ::openMedia
+                )
 
-                    true
-                }
-
-                R.id.sort -> {
-
-                    if (
-                        currentTab == R.id.photos ||
-                        currentTab == R.id.videos
-                    ) {
-
-                        showSortDialog()
-                    }
-
-                    true
-                }
-
-                else -> false
+                true
             }
+
+            R.id.sort -> {
+
+                showSortDialog()
+
+                true
+            }
+
+            else -> false
         }
     }
+}
 
     // =========================================================
     // SELECTION TOOLBAR
@@ -1366,15 +1358,4 @@ class MainActivity : AppCompatActivity() {
     // MENU
     // =========================================================
 
-    override fun onCreateOptionsMenu(
-        menu: Menu
-    ): Boolean {
-
-        menuInflater.inflate(
-            R.menu.main_menu,
-            menu
-        )
-
-        return true
-    }
 }
