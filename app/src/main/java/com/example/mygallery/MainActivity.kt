@@ -71,39 +71,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         setSupportActionBar(binding.toolbar)
-        binding.toolbar.setOnMenuItemClickListener { item ->
-
-    when (item.itemId) {
-
-        R.id.search -> {
-
-            SearchDialog.show(
-                this,
-                vm.images.value.orEmpty() +
-                    vm.videos.value.orEmpty(),
-                ::openMedia
-            )
-
-            true
-        }
-
-        R.id.sort -> {
-
-            if (
-                currentTab == R.id.photos ||
-                currentTab == R.id.videos
-            ) {
-
-                showSortDialog()
-            }
-
-            true
-        }
-
-        else -> false
-    }
-        }
-        
 
         ViewCompat.setOnApplyWindowInsetsListener(
             binding.root
@@ -124,6 +91,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupAdapters()
+        setupToolbar()
         setupSelectionToolbar()
         setupRecycler()
         setupBottomNavigation()
@@ -134,6 +102,10 @@ class MainActivity : AppCompatActivity() {
 
         updatePermissionUi()
     }
+
+    // =========================================================
+    // ADAPTERS
+    // =========================================================
 
     private fun setupAdapters() {
 
@@ -181,6 +153,50 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // =========================================================
+    // NORMAL TOOLBAR
+    // =========================================================
+
+    private fun setupToolbar() {
+
+        binding.toolbar.setOnMenuItemClickListener { item ->
+
+            when (item.itemId) {
+
+                R.id.search -> {
+
+                    SearchDialog.show(
+                        this,
+                        vm.images.value.orEmpty() +
+                            vm.videos.value.orEmpty(),
+                        ::openMedia
+                    )
+
+                    true
+                }
+
+                R.id.sort -> {
+
+                    if (
+                        currentTab == R.id.photos ||
+                        currentTab == R.id.videos
+                    ) {
+
+                        showSortDialog()
+                    }
+
+                    true
+                }
+
+                else -> false
+            }
+        }
+    }
+
+    // =========================================================
+    // SELECTION TOOLBAR
+    // =========================================================
+
     private fun setupSelectionToolbar() {
 
         binding.selectionToolbar.setNavigationOnClickListener {
@@ -194,16 +210,19 @@ class MainActivity : AppCompatActivity() {
             when (item.itemId) {
 
                 R.id.action_share_selected -> {
+
                     shareSelectedMedia()
                     true
                 }
 
                 R.id.action_favorite_selected -> {
+
                     toggleSelectedFavorites()
                     true
                 }
 
                 R.id.action_delete_selected -> {
+
                     deleteSelectedMedia()
                     true
                 }
@@ -212,6 +231,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    // =========================================================
+    // RECYCLER
+    // =========================================================
 
     private fun setupRecycler() {
 
@@ -242,6 +265,10 @@ class MainActivity : AppCompatActivity() {
             )
     }
 
+    // =========================================================
+    // BOTTOM NAVIGATION
+    // =========================================================
+
     private fun setupBottomNavigation() {
 
         binding.bottomNav.setOnItemSelectedListener { menuItem ->
@@ -257,6 +284,10 @@ class MainActivity : AppCompatActivity() {
             true
         }
     }
+
+    // =========================================================
+    // PERMISSION
+    // =========================================================
 
     private fun setupPermissionButtons() {
 
@@ -279,6 +310,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // =========================================================
+    // REFRESH
+    // =========================================================
+
     private fun setupSwipeRefresh() {
 
         binding.swipeRefresh.setOnRefreshListener {
@@ -288,6 +323,10 @@ class MainActivity : AppCompatActivity() {
             binding.swipeRefresh.isRefreshing = false
         }
     }
+
+    // =========================================================
+    // OBSERVERS
+    // =========================================================
 
     private fun setupObservers() {
 
@@ -312,6 +351,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    // =========================================================
+    // BACK BUTTON
+    // =========================================================
 
     private fun setupBackButton() {
 
@@ -350,6 +393,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // =========================================================
+    // TAB RENDERING
+    // =========================================================
+
     private fun renderTab() {
 
         updateSelectionUi(0)
@@ -369,28 +416,40 @@ class MainActivity : AppCompatActivity() {
 
         when (currentTab) {
 
-            R.id.photos ->
+            R.id.photos -> {
+
                 submitPhotos(
                     vm.images.value.orEmpty()
                 )
+            }
 
-            R.id.videos ->
+            R.id.videos -> {
+
                 submitVideos(
                     vm.videos.value.orEmpty()
                 )
+            }
 
-            R.id.albums ->
+            R.id.albums -> {
+
                 submitAlbums(
                     vm.albums.value.orEmpty()
                 )
+            }
         }
     }
+
+    // =========================================================
+    // PHOTOS
+    // =========================================================
 
     private fun submitPhotos(
         items: List<MediaItem>
     ) {
 
-        binding.recycler.adapter = photoAdapter
+        binding.recycler.adapter =
+            photoAdapter
+
         binding.recycler.layoutManager =
             photoLayoutManager
 
@@ -399,13 +458,14 @@ class MainActivity : AppCompatActivity() {
                 it.type == MediaType.IMAGE
             }
 
-        photoAdapter.submitList(
-            ArrayList(
-                sortMedia(
-                    photos,
-                    photoSortMode
-                )
+        val sortedPhotos =
+            sortMedia(
+                photos,
+                photoSortMode
             )
+
+        photoAdapter.submitList(
+            ArrayList(sortedPhotos)
         )
 
         binding.emptyGroup.visibility =
@@ -416,11 +476,17 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
+    // =========================================================
+    // VIDEOS
+    // =========================================================
+
     private fun submitVideos(
         items: List<MediaItem>
     ) {
 
-        binding.recycler.adapter = videoAdapter
+        binding.recycler.adapter =
+            videoAdapter
+
         binding.recycler.layoutManager =
             videoLayoutManager
 
@@ -429,13 +495,14 @@ class MainActivity : AppCompatActivity() {
                 it.type == MediaType.VIDEO
             }
 
-        videoAdapter.submitList(
-            ArrayList(
-                sortMedia(
-                    videos,
-                    videoSortMode
-                )
+        val sortedVideos =
+            sortMedia(
+                videos,
+                videoSortMode
             )
+
+        videoAdapter.submitList(
+            ArrayList(sortedVideos)
         )
 
         binding.emptyGroup.visibility =
@@ -446,11 +513,17 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
+    // =========================================================
+    // ALBUMS
+    // =========================================================
+
     private fun submitAlbums(
         items: List<Album>
     ) {
 
-        binding.recycler.adapter = albumAdapter
+        binding.recycler.adapter =
+            albumAdapter
+
         binding.recycler.layoutManager =
             albumLayoutManager
 
@@ -466,17 +539,28 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
+    // =========================================================
+    // CURRENT ADAPTER
+    // =========================================================
+
     private fun getCurrentMediaAdapter(): MediaGridAdapter? {
 
         return when (currentTab) {
 
-            R.id.photos -> photoAdapter
+            R.id.photos ->
+                photoAdapter
 
-            R.id.videos -> videoAdapter
+            R.id.videos ->
+                videoAdapter
 
-            else -> null
+            else ->
+                null
         }
     }
+
+    // =========================================================
+    // SELECTION
+    // =========================================================
 
     private fun clearAllSelections() {
 
@@ -489,7 +573,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun updateSelectionUi(count: Int) {
+    private fun updateSelectionUi(
+        count: Int
+    ) {
 
         if (
             count > 0 &&
@@ -546,21 +632,24 @@ class MainActivity : AppCompatActivity() {
                 R.id.action_favorite_selected
             )
 
-        if (allFavorites) {
+        menuItem.title =
+            if (allFavorites) {
 
-            menuItem.title =
                 getString(
                     R.string.remove_favorite
                 )
 
-        } else {
+            } else {
 
-            menuItem.title =
                 getString(
                     R.string.add_favorite
                 )
-        }
+            }
     }
+
+    // =========================================================
+    // SHARE SELECTED
+    // =========================================================
 
     private fun shareSelectedMedia() {
 
@@ -629,6 +718,10 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    // =========================================================
+    // FAVORITES
+    // =========================================================
+
     private fun toggleSelectedFavorites() {
 
         val adapter =
@@ -667,6 +760,10 @@ class MainActivity : AppCompatActivity() {
 
         vm.refresh()
     }
+
+    // =========================================================
+    // DELETE SELECTED
+    // =========================================================
 
     private fun deleteSelectedMedia() {
 
@@ -754,18 +851,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // -------------------------
+    // =========================================================
     // SORT
-    // -------------------------
+    // =========================================================
 
     private fun showSortDialog() {
 
-        val options = arrayOf(
-            "Newest first",
-            "Oldest first",
-            "Name A–Z",
-            "Name Z–A"
-        )
+        val options =
+            arrayOf(
+                "Newest first",
+                "Oldest first",
+                "Name A–Z",
+                "Name Z–A"
+            )
 
         val currentSortMode =
             when (currentTab) {
@@ -796,18 +894,31 @@ class MainActivity : AppCompatActivity() {
                 selected
             ) { dialog, which ->
 
+                val newSortMode =
+                    when (which) {
+
+                        0 ->
+                            SortMode.NEWEST
+
+                        1 ->
+                            SortMode.OLDEST
+
+                        2 ->
+                            SortMode.NAME_ASC
+
+                        3 ->
+                            SortMode.NAME_DESC
+
+                        else ->
+                            SortMode.NEWEST
+                    }
+
                 when (currentTab) {
 
                     R.id.photos -> {
 
                         photoSortMode =
-                            when (which) {
-
-                                0 -> SortMode.NEWEST
-                                1 -> SortMode.OLDEST
-                                2 -> SortMode.NAME_ASC
-                                else -> SortMode.NAME_DESC
-                            }
+                            newSortMode
 
                         submitPhotos(
                             vm.images.value.orEmpty()
@@ -817,13 +928,7 @@ class MainActivity : AppCompatActivity() {
                     R.id.videos -> {
 
                         videoSortMode =
-                            when (which) {
-
-                                0 -> SortMode.NEWEST
-                                1 -> SortMode.OLDEST
-                                2 -> SortMode.NAME_ASC
-                                else -> SortMode.NAME_DESC
-                            }
+                            newSortMode
 
                         submitVideos(
                             vm.videos.value.orEmpty()
@@ -843,31 +948,39 @@ class MainActivity : AppCompatActivity() {
 
         return when (sortMode) {
 
-            SortMode.NEWEST ->
+            SortMode.NEWEST -> {
 
                 items.sortedByDescending {
                     it.dateAddedSeconds
                 }
+            }
 
-            SortMode.OLDEST ->
+            SortMode.OLDEST -> {
 
                 items.sortedBy {
                     it.dateAddedSeconds
                 }
+            }
 
-            SortMode.NAME_ASC ->
+            SortMode.NAME_ASC -> {
 
                 items.sortedBy {
                     it.name.lowercase()
                 }
+            }
 
-            SortMode.NAME_DESC ->
+            SortMode.NAME_DESC -> {
 
                 items.sortedByDescending {
                     it.name.lowercase()
                 }
+            }
         }
     }
+
+    // =========================================================
+    // COLUMNS
+    // =========================================================
 
     private fun calculateColumns(): Int {
 
@@ -877,12 +990,23 @@ class MainActivity : AppCompatActivity() {
 
         return when {
 
-            widthDp >= 900 -> 6
-            widthDp >= 700 -> 5
-            widthDp >= 500 -> 4
-            else -> 3
+            widthDp >= 900 ->
+                6
+
+            widthDp >= 700 ->
+                5
+
+            widthDp >= 500 ->
+                4
+
+            else ->
+                3
         }
     }
+
+    // =========================================================
+    // PERMISSIONS
+    // =========================================================
 
     private fun hasMediaPermission(): Boolean {
 
@@ -924,7 +1048,9 @@ class MainActivity : AppCompatActivity() {
                 )
             }
 
-        permissionLauncher.launch(permissions)
+        permissionLauncher.launch(
+            permissions
+        )
     }
 
     private fun updatePermissionUi() {
@@ -950,6 +1076,10 @@ class MainActivity : AppCompatActivity() {
             vm.refresh()
         }
     }
+
+    // =========================================================
+    // OPEN MEDIA
+    // =========================================================
 
     private fun openMedia(
         item: MediaItem
@@ -1047,12 +1177,113 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // =========================================================
+    // SINGLE ITEM ACTIONS
+    // =========================================================
+
+    private fun showActions(
+        item: MediaItem
+    ) {
+
+        val choices =
+            arrayOf(
+                getString(R.string.share),
+
+                if (item.isFavorite) {
+
+                    getString(
+                        R.string.remove_favorite
+                    )
+
+                } else {
+
+                    getString(
+                        R.string.add_favorite
+                    )
+                },
+
+                getString(R.string.info),
+
+                getString(R.string.delete)
+            )
+
+        AlertDialog.Builder(this)
+            .setTitle(item.name)
+            .setItems(
+                choices
+            ) { _, which ->
+
+                when (which) {
+
+                    0 ->
+                        share(item)
+
+                    1 ->
+                        vm.toggleFavorite(item) {
+                            renderTab()
+                        }
+
+                    2 ->
+                        MediaInfoDialog.show(
+                            this,
+                            item
+                        )
+
+                    3 ->
+                        delete(item)
+                }
+            }
+            .show()
+    }
+
+    // =========================================================
+    // SHARE SINGLE
+    // =========================================================
+
+    private fun share(
+        item: MediaItem
+    ) {
+
+        val intent =
+            Intent(
+                Intent.ACTION_SEND
+            ).apply {
+
+                type =
+                    item.mimeType.ifBlank {
+                        "*/*"
+                    }
+
+                putExtra(
+                    Intent.EXTRA_STREAM,
+                    item.uri
+                )
+
+                addFlags(
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            }
+
+        startActivity(
+            Intent.createChooser(
+                intent,
+                getString(R.string.share)
+            )
+        )
+    }
+
+    // =========================================================
+    // DELETE SINGLE
+    // =========================================================
+
     private fun delete(
         item: MediaItem
     ) {
 
         AlertDialog.Builder(this)
-            .setTitle(R.string.delete)
+            .setTitle(
+                R.string.delete
+            )
             .setMessage(
                 getString(
                     R.string.delete_confirm,
@@ -1106,6 +1337,10 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    // =========================================================
+    // DELETE RESULT
+    // =========================================================
+
     override fun onActivityResult(
         requestCode: Int,
         resultCode: Int,
@@ -1126,6 +1361,10 @@ class MainActivity : AppCompatActivity() {
             vm.refresh()
         }
     }
+
+    // =========================================================
+    // MENU
+    // =========================================================
 
     override fun onCreateOptionsMenu(
         menu: Menu
